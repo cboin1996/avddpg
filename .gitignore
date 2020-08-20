@@ -1,0 +1,6 @@
+
+# Vscode #
+.vscode
+.ropeproject
+# venv
+venv
