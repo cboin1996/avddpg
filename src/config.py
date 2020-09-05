@@ -8,7 +8,7 @@ class Config:
     # Discount factor for future rewards
     gamma = 0.99
     # Used to update target networks
-    tau = 0.001
+    tau = 0.005
     batch_size=64
     buffer_size=50000 
     show_env=True

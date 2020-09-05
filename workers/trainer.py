@@ -93,10 +93,8 @@ def run():
             rbuffer.add((prev_state, 
                          action, 
                          reward, 
-                         terminal, 
                          state))
             
-
             
             episodic_reward += reward
             # train and update the actor critics
