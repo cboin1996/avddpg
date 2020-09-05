@@ -1,57 +1,63 @@
 from collections import deque
 import random 
 import numpy as np 
-
-class ReplayBuffer(object):
-    """Replay buffer for DDPG learning
-    """    
-    def __init__(self, buffer_size):
-        self.buffer_size = buffer_size
-        self.count = 0
-        self.buffer = deque()
-
-    def add(self, state, action, reward, terminal, next_state):
-        """Add experience to the buffer     
+import tensorflow as tf
+class ReplayBuffer:
+    def __init__(self, buffer_capacity=100000, batch_size=64,
+                 num_states=None,
+                 num_actions=None):
+        """Default constructor
 
         Args:
-            state: [description]
-            action: [description]
-            reward: [description]
-            terminal: [description]
-            next_state: [description]
-        """        
-        experience = (state, action, reward, terminal, next_state)
+            buffer_capacity (int, optional): Capacity of the buffer. Defaults to 100000.
+            batch_size (int, optional): random sample batch sizes. Defaults to 64.
+            num_states (int, optional): state space of env. Defaults to None.
+            num_actions (int, optional): action space of env. Defaults to None.
+        """
 
-        if self.count < self.size:
-            self.buffer.append(experience)
-            self.count += 1
-        else:
-            self.buffer.popleft()
-            self.buffer.append(experience)
-    
-    def size(self):
-        return self.count 
-    
-    def sample_batch(self, batch_size):
-        batch = []
+        # Number of "experiences" to store at max
+        self.buffer_capacity = buffer_capacity
+        # Num of tuples to train on.
+        self.batch_size = batch_size
 
-        if self.count < batch_size:
-            batch = random.sample(self.buffer, self.count)
-        else:
-            batch = random.sample(self.buffer, batch_size)
-        
-        state_batch = np.array([_[0] for _ in batch])
-        action_batch = np.array([_[1] for _ in batch])
-        reward_batch = np.array([_[2] for _ in batch])
-        terminal_batch = np.array([_[3] for _ in batch])
-        next_state_batch = np.array([_[4] for _ in batch])
+        # Its tells us num of times record() was called.
+        self.buffer_counter = 0
 
-        return state_batch, action_batch, reward_batch, terminal_batch, next_state_batch
-    
-    def clear(self):
-        self.buffer.clear()
-        self.count = 0
+        # Instead of list of tuples as the exp.replay concept go
+        # We use different np.arrays for each tuple element
+        self.state_buffer = np.zeros((self.buffer_capacity, num_states))
+        self.action_buffer = np.zeros((self.buffer_capacity, num_actions))
+        self.reward_buffer = np.zeros((self.buffer_capacity, 1))
+        self.next_state_buffer = np.zeros((self.buffer_capacity, num_states))
+
+    # Takes (s,a,r,s') obervation tuple as input
+    def add(self, obs_tuple):
+        # Set index to zero if buffer_capacity is exceeded,
+        # replacing old records
+        index = self.buffer_counter % self.buffer_capacity
+
+        self.state_buffer[index] = obs_tuple[0]
+        self.action_buffer[index] = obs_tuple[1]
+        self.reward_buffer[index] = obs_tuple[2]
+        self.next_state_buffer[index] = obs_tuple[3]
+
+        self.buffer_counter += 1
+
+    # We compute the loss and update parameters
+    def sample(self):
+        # Get sampling range
+        record_range = min(self.buffer_counter, self.buffer_capacity)
+        # Randomly sample indices
+        batch_indices = np.random.choice(record_range, self.batch_size)
+
+        # Convert to tensors
+        state_batch = tf.convert_to_tensor(self.state_buffer[batch_indices])
+        action_batch = tf.convert_to_tensor(self.action_buffer[batch_indices])
+        reward_batch = tf.convert_to_tensor(self.reward_buffer[batch_indices])
+        reward_batch = tf.cast(reward_batch, dtype=tf.float32)
+        next_state_batch = tf.convert_to_tensor(self.next_state_buffer[batch_indices])
+
+        return state_batch, action_batch, reward_batch, next_state_batch
 
 if __name__=="__main__":
-    replayBuffer = ReplayBuffer(1000)
-    print(replayBuffer.sample_batch(10))
+    pass

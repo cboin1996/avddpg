@@ -1,11 +1,14 @@
-import re 
+import tensorflow as tf
+import numpy as np
+from agent import model, ddpgagent
+from workers import trainer
+
+import sys
+def run(args):
+
+    if args[1] == 'tr':
+        trainer.run()
 
 
 if __name__ == "__main__":
-    string = r'^((ID?)(.*?)\d+)'
-
-    other_string = r'(?<=(ID:))(.+)'
-    pattern = re.compile(string, re.IGNORECASE)
-    matches = re.match(pattern, "ID: 23 j333o")
-    if (matches):
-        print(matches.group(0))
+    run(sys.argv)
