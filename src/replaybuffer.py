@@ -12,7 +12,7 @@ class ReplayBuffer:
             buffer_capacity (int, optional): Capacity of the buffer. Defaults to 100000.
             batch_size (int, optional): random sample batch sizes. Defaults to 64.
             num_states (int, optional): state space of env. Defaults to None.
-            num_actions (int, optional): action space of env. Defaults to None.
+            num_actions (int, optional): action space of env. Default to None.
         """
 
         # Number of "experiences" to store at max
