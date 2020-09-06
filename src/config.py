@@ -12,3 +12,6 @@ class Config:
     batch_size=64
     buffer_size=50000 
     show_env=True
+
+    environment_desc = 'MountainCarContinuous-v0'
+    # env = "Pendulum-v0"

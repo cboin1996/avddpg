@@ -34,7 +34,8 @@ def learn(config, rbuffer, actor_model, critic_model,
     return critic_grad, actor_grad
 
 def run():
-    problem = "Pendulum-v0"
+    ddpgconf = config.Config
+    problem = ddpgconf.environment_desc
     env = gym.make(problem)
 
     num_states = env.observation_space.shape[0]
@@ -48,7 +49,7 @@ def run():
     print("Max Value of Action ->  {}".format(high_bound))
     print("Min Value of Action ->  {}".format(low_bound))
 
-    ddpgconf = config.Config
+
     ou_noise = noise.OUActionNoise(mean=np.zeros(1), std_dev=float(ddpgconf.std_dev) 
                                                                    * np.ones(1))
     actor = model.get_actor(num_states, high_bound)
