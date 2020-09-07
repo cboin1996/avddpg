@@ -4,3 +4,8 @@
 .ropeproject
 # venv
 venv
+
+
+__pycache__
+*.pyc
+.DS_STORE
