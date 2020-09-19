@@ -1,10 +1,9 @@
 import tensorflow as tf
 import numpy as np
-from src import config, noise, replaybuffer
+from src import config, noise, replaybuffer, environment
 from agent import model, ddpgagent
 import gym
 import matplotlib.pyplot as plt
-
 
 def learn(config, rbuffer, actor_model, critic_model,
           target_actor, target_critic, critic_optimizer, actor_optimizer):
@@ -34,23 +33,25 @@ def learn(config, rbuffer, actor_model, critic_model,
     return critic_grad, actor_grad
 
 def run():
-    ddpgconf = config.Config
-    problem = ddpgconf.environment_desc
-    env = gym.make(problem)
+    conf = config.Config
 
-    num_states = env.observation_space.shape[0]
+    env = environment.Vehicle(1, conf.sample_rate, conf)
+
+    num_states = env.num_states
     print("Size of State Space ->  {}".format(num_states))
-    num_actions = env.action_space.shape[0]
+    num_actions = env.num_actions
     print("Size of Action Space ->  {}".format(num_actions))
 
-    high_bound = env.action_space.high[0]
-    low_bound = env.action_space.low[0]
+    high_bound = env.action_high
+    low_bound  = env.action_low
 
     print("Max Value of Action ->  {}".format(high_bound))
     print("Min Value of Action ->  {}".format(low_bound))
 
+    print(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
 
-    ou_noise = noise.OUActionNoise(mean=np.zeros(1), std_dev=float(ddpgconf.std_dev) 
+
+    ou_noise = noise.OUActionNoise(mean=np.zeros(1), std_dev=float(conf.std_dev) 
                                                                    * np.ones(1))
     actor = model.get_actor(num_states, high_bound)
     critic = model.get_critic(num_states, num_actions)
@@ -62,58 +63,50 @@ def run():
     target_actor.set_weights(actor.get_weights())
     target_critic.set_weights(critic.get_weights())
 
-    critic_optimizer = tf.keras.optimizers.Adam(ddpgconf.critic_lr)
-    actor_optimizer = tf.keras.optimizers.Adam(ddpgconf.actor_lr)
+    critic_optimizer = tf.keras.optimizers.Adam(conf.critic_lr)
+    actor_optimizer = tf.keras.optimizers.Adam(conf.actor_lr)
 
     # To store reward history of each episode
     ep_reward_list = []
     # To store average reward history of last few episodes
     avg_reward_list = []
 
-    rbuffer = replaybuffer.ReplayBuffer(ddpgconf.buffer_size, 
-                                        ddpgconf.batch_size,
+    rbuffer = replaybuffer.ReplayBuffer(conf.buffer_size, 
+                                        conf.batch_size,
                                         num_states,
                                         num_actions)
     # Takes about 20 min to train
-    for ep in range(ddpgconf.total_episodes):
+    for ep in range(conf.number_of_episodes):
 
         prev_state = env.reset()
         episodic_reward = 0
 
-        while True:
-            
-            if ddpgconf.show_env == True:
-                env.render() 
-
+        for ep in range(conf.steps_per_episode):
             tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
             action = ddpgagent.policy(actor(tf_prev_state), ou_noise, low_bound, high_bound)
             # Recieve state and reward from environment.
-            state, reward, terminal, info = env.step(action)
+            state, reward = env.step(action, 0) # setting a_lead to 0 here since one vehicle
 
             rbuffer.add((prev_state, 
                          action, 
                          reward, 
                          state))
             
-            
             episodic_reward += reward
             # train and update the actor critics
-            critic_grad, actor_grad = learn(ddpgconf, rbuffer, actor, critic, target_actor, target_critic, 
+            critic_grad, actor_grad = learn(conf, rbuffer, actor, critic, target_actor, target_critic, 
                                             critic_optimizer, actor_optimizer)
             
             critic_optimizer.apply_gradients(zip(critic_grad, critic.trainable_variables))
             actor_optimizer.apply_gradients(zip(actor_grad, actor.trainable_variables))
 
             # update the target networks
-            tc_new_weights, ta_new_weights = ddpgagent.update_target(ddpgconf.tau, target_critic.weights, critic.weights, target_actor.weights, actor.weights)
+            tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critic.weights, critic.weights, target_actor.weights, actor.weights)
             target_actor.set_weights(ta_new_weights)
             target_critic.set_weights(tc_new_weights)
             prev_state = state
             
-            if terminal:
-                break
-
         ep_reward_list.append(episodic_reward)
 
         # Mean of last 40 episodes
