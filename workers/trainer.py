@@ -6,13 +6,24 @@ import gym
 import matplotlib.pyplot as plt
 
 def learn(config, rbuffer, actor_model, critic_model,
-          target_actor, target_critic, critic_optimizer, actor_optimizer):
+          target_actor, target_critic):
+    """Trains and updates the actor critic network
 
-    # Randomly sample indices
+    Args:
+        config (Config): the config for the program
+        rbuffer : the replay buffer object
+        actor_model : the actor model network       
+        critic_model : the critic model network
+        target_actor : the target actor network
+        target_critic : the target critic network
+
+    Returns:
+        : the updated gradients for the actor critic network
+    """
+    # Sample replay buffer
     state_batch, action_batch, reward_batch, next_state_batch = rbuffer.sample()
 
-    # Training and updating Actor & Critic networks.
-    # See Pseudo Code.
+    # Update and train the actor critic networks
     with tf.GradientTape() as tape:
         target_actions = target_actor(next_state_batch)
         y = reward_batch + config.gamma * target_critic([next_state_batch, target_actions])
@@ -25,8 +36,6 @@ def learn(config, rbuffer, actor_model, critic_model,
     with tf.GradientTape() as tape:
         actions = actor_model(state_batch)
         critic_value = critic_model([state_batch, actions])
-        # Used `-value` as we want to maximize the value given
-        # by the critic for our actions
         actor_loss = -tf.math.reduce_mean(critic_value)
 
     actor_grad = tape.gradient(actor_loss, actor_model.trainable_variables)
@@ -36,7 +45,8 @@ def run():
     conf = config.Config
 
     env = environment.Vehicle(1, conf.sample_rate, conf)
-
+    print(env)
+    print(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
     num_states = env.num_states
     print("Size of State Space ->  {}".format(num_states))
     num_actions = env.num_actions
@@ -47,9 +57,6 @@ def run():
 
     print("Max Value of Action ->  {}".format(high_bound))
     print("Min Value of Action ->  {}".format(low_bound))
-
-    print(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
-
 
     ou_noise = noise.OUActionNoise(mean=np.zeros(1), std_dev=float(conf.std_dev) 
                                                                    * np.ones(1))
@@ -66,28 +73,32 @@ def run():
     critic_optimizer = tf.keras.optimizers.Adam(conf.critic_lr)
     actor_optimizer = tf.keras.optimizers.Adam(conf.actor_lr)
 
-    # To store reward history of each episode
     ep_reward_list = []
-    # To store average reward history of last few episodes
+
     avg_reward_list = []
 
     rbuffer = replaybuffer.ReplayBuffer(conf.buffer_size, 
                                         conf.batch_size,
                                         num_states,
                                         num_actions)
-    # Takes about 20 min to train
+    
+
     for ep in range(conf.number_of_episodes):
 
         prev_state = env.reset()
         episodic_reward = 0
 
-        for ep in range(conf.steps_per_episode):
+        for _ in range(conf.steps_per_episode):
+            if conf.show_env == True:
+                # print(env, end="\r", flush=True)
+                env.render()
+            
             tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
             action = ddpgagent.policy(actor(tf_prev_state), ou_noise, low_bound, high_bound)
-            # Recieve state and reward from environment.
-            state, reward = env.step(action, 0) # setting a_lead to 0 here since one vehicle
 
+            state, reward, terminal = env.step(action, 0) # setting a_lead to 0 here since one vehicle
+            
             rbuffer.add((prev_state, 
                          action, 
                          reward, 
@@ -95,8 +106,9 @@ def run():
             
             episodic_reward += reward
             # train and update the actor critics
-            critic_grad, actor_grad = learn(conf, rbuffer, actor, critic, target_actor, target_critic, 
-                                            critic_optimizer, actor_optimizer)
+            critic_grad, actor_grad = learn(conf, rbuffer, 
+                                            actor, critic, 
+                                            target_actor, target_critic)
             
             critic_optimizer.apply_gradients(zip(critic_grad, critic.trainable_variables))
             actor_optimizer.apply_gradients(zip(actor_grad, actor.trainable_variables))
@@ -105,13 +117,17 @@ def run():
             tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critic.weights, critic.weights, target_actor.weights, actor.weights)
             target_actor.set_weights(ta_new_weights)
             target_critic.set_weights(tc_new_weights)
+
+            if terminal:
+                break
+
             prev_state = state
             
         ep_reward_list.append(episodic_reward)
 
         # Mean of last 40 episodes
         avg_reward = np.mean(ep_reward_list[-40:])
-        print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
+        print("\nEpisode * {} * Avg Reward is ==> {}\n".format(ep, avg_reward))
         avg_reward_list.append(avg_reward)
     
     actor.save_weights("pendulum_actor.h5")

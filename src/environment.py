@@ -70,6 +70,7 @@ class Vehicle:
             L           (float)    : the length of the vehicle (m)
             idx         (int)      : the integer id of the vehicle
             T           (float)    : sample rate
+            tau         (float)    : vehicle accel dynamics coefficient
             num_states  (int)      : number of states in the model
             num_actions (int)      : number of actions in the model
             a           (float)    : plant stability constant
@@ -86,7 +87,7 @@ class Vehicle:
         self.L = round(random.uniform(2,3), 2)
         self.idx = idx
         self.T = T
-        self.tau = 0.2
+        self.tau = 0.5
         self.num_states = 3
         self.num_actions = 1
         self.a = 1
@@ -94,12 +95,18 @@ class Vehicle:
 
         self.i_ep = 2.5
         self.i_ev = 2.5
-        self.i_alead = 2.5
+        self.i_alead = 0
+
+        self.max_ep = 10 # max ep error before environment returns terminate = True
+        self.reset_ep_max = 7 # used as the max +/- value when generating new ep on reset
+        self.max_ev = 5 # max +/- value when generating new ev on reset
 
         self.x = [self.i_ep, # intial gap error (m)
                   self.i_ev, # initial velocity error
                   self.i_alead]   # initial accel of leading vehicle
-        
+        self.reward = 0
+        self.u = 0 # the input to the system (vehicle acceleration)
+
         self.action_high =  4.5
         self.action_low  = -4.5
 
@@ -116,7 +123,7 @@ class Vehicle:
                                            + self.h * self.tau * e
                                            - self.tau * self.T
                                            + self.tau**2 
-                                           - self.tau**2 * e],
+                                           - (self.tau**2) * e],
                                [0,   1   , -self.tau + self.tau * e],
                                [0,   0   , e]])
 
@@ -133,7 +140,29 @@ class Vehicle:
             self.C = np.array([(self.T**2)/2, self.T, 0])
 
     def __str__(self):
-        return f"r:{self.r}, h:{self.h}, L:{self.L}"
+        return "\n".join([
+                            f"r: {self.r}",
+                            f"h: {self.h}",
+                            f"L: {self.L}",
+                            f"idx: {self.idx}",
+                            f"T: {self.T}",
+                            f"tau: {self.tau }",
+                            f"num_states: {self.num_states}",
+                            f"num_actions: {self.num_actions}",
+                            f"a : {self.a}",
+                            f"b: {self.b}",
+                            f"i_ep: {self.i_ep}",
+                            f"i_ev: {self.i_ev}",
+                            f"i_alead: {self.i_alead}",
+                            f"x: {self.x}",
+                            f"action_high: {self.action_high}",
+                            f"action_low: {self.action_low}",
+                        ])
+    
+    def render(self):
+        return print(" ".join([
+                            f"x: {self.x}, reward: {self.reward}, u: {self.u}"
+                        ]), end="\r", flush=True)
     
     def step(self, u, a_lead):
         """advances the vehicle model by one timestep
@@ -142,13 +171,19 @@ class Vehicle:
             u (float): the action to take
             a_lead (float): the leading vehicles acceleration
         """
-        reward = self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(u[0])**2
+        terminal = False
+        self.u = u[0]
+
+        if abs(self.x[0]) > self.max_ep:
+            terminal = True
+        
+        self.reward = self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(u[0])**2
         self.x = self.A.dot(self.x) + self.B.dot(u[0]) + self.C.dot(a_lead)
-        return self.x, reward
+        return self.x, -self.reward, terminal
     
     def reset(self):
-        self.x =  [self.i_ep, # intial gap error (m)
-                   self.i_ev, # initial velocity error
+        self.x =  [random.uniform(-self.reset_ep_max, self.reset_ep_max), # intial gap error (m)
+                   random.uniform(-self.max_ev, self.max_ev), # initial velocity error
                    self.i_alead]   # initial accel of leading vehicle
         return(self.x)
 
