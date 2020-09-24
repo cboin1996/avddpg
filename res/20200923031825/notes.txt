@@ -1,0 +1,1 @@
+model was 256 exceptfor first input layer of the critic which was 64.

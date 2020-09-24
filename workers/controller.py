@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 def run():
-    conf = config.Config
-    simulation_time = 1 # sim time in seconds
+    conf = config.Config()
+    simulation_time = 20 # sim time in seconds
     steps = int(simulation_time/conf.sample_rate)
 
-    env = environment.Vehicle(1, conf.sample_rate, conf)
+    env = environment.Vehicle(1, conf)
 
     print(env)
 
@@ -34,6 +34,7 @@ def run():
     plt.plot(states[:, 1], label="ev")
     plt.plot(states[:, 2], label="a")
     plt.plot(input_list, label="u")
+    plt.xlabel(f"{conf.sample_rate}s steps for total time of {simulation_time} s")
     plt.legend()
     plt.show()
 

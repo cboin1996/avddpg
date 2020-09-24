@@ -1,9 +1,11 @@
 import tensorflow as tf
 import numpy as np
-from src import config, noise, replaybuffer, environment
+from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
 import gym
 import matplotlib.pyplot as plt
+import datetime
+import sys, os
 
 def learn(config, rbuffer, actor_model, critic_model,
           target_actor, target_critic):
@@ -42,9 +44,9 @@ def learn(config, rbuffer, actor_model, critic_model,
     return critic_grad, actor_grad
 
 def run():
-    conf = config.Config
+    conf = config.Config()
 
-    env = environment.Vehicle(1, conf.sample_rate, conf)
+    env = environment.Vehicle(1, conf)
     print(env)
     print(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
     num_states = env.num_states
@@ -82,7 +84,6 @@ def run():
                                         num_states,
                                         num_actions)
     
-
     for ep in range(conf.number_of_episodes):
 
         prev_state = env.reset()
@@ -130,13 +131,20 @@ def run():
         print("\nEpisode * {} * Avg Reward is ==> {}\n".format(ep, avg_reward))
         avg_reward_list.append(avg_reward)
     
-    actor.save_weights("pendulum_actor.h5")
-    critic.save_weights("pendulum_critic.h5")
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp)
+    os.mkdir(base_dir)
 
-    target_actor.save_weights("pendulum_target_actor.h5")
-    target_critic.save_weights("pendulum_target_critic.h5")
+    actor.save(os.path.join(base_dir, conf.actor_dir))
+    critic.save(os.path.join(base_dir, conf.critic_dir))
+
+    target_actor.save(os.path.join(base_dir, conf.t_actor_dir))
+    target_critic.save(os.path.join(base_dir, conf.t_critic_dir))
 
     plt.plot(avg_reward_list)
     plt.xlabel("Episode")
     plt.ylabel("Avg. Epsiodic Reward")
-    plt.show()
+    plt.savefig(os.path.join(base_dir, conf.fig_path))
+
+    util.save_file(os.path.join(base_dir, conf.param_path), str(conf))
+    util.save_file(os.path.join(base_dir, conf.env_path), str(env))

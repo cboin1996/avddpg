@@ -1,0 +1,14 @@
+self.total_time_steps = 500000
+self.sample_rate = 0.1
+self.episode_sim_time = 20
+self.steps_per_episode = 200
+self.number_of_episodes = 2500
+self.gamma = 0.99
+self.critic_lr = 0.001
+self.actor_lr = 0.0001
+self.std_dev = 0.02
+self.tau = 0.001
+self.batch_size = 64
+self.buffer_size = 100000
+self.show_env = False
+self.method = exact
