@@ -24,21 +24,21 @@ def run():
                                                                    * np.ones(1))
 
     states = np.zeros((steps, env.num_states)) # states
-    input_list = []
+    # input_list = np.linspace(-2.5, 2.5, steps)
+    # input_list = [0 if i < (steps/2) else 2.5 for i in range(steps)]
+    input_list = [0 for i in range(steps)]
     for i in range(steps):
         state = tf.expand_dims(tf.convert_to_tensor(state), 0)
         action = ddpgagent.policy(actor(state), ou_noise, env.action_low, env.action_high)
-        inp = 0
-        state, reward, terminal = env.step(action, inp)
 
-        input_list.append(inp)
+        state, reward, terminal = env.step(action, input_list[i])
 
         states[i] = state
     
     plt.plot(states[:, 0], label="ep")
     plt.plot(states[:, 1], label="ev")
     plt.plot(states[:, 2], label="a")
-    plt.plot(input_list, label="u")
+    plt.plot(input_list, label="a_lead")
     plt.xlabel(f"{conf.sample_rate}s steps for total time of {simulation_time} s")
     plt.legend()
     plt.show()
