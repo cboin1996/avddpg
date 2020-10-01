@@ -37,7 +37,7 @@ class Config():
         self.action_low = -4.5
 
         """Trainer"""
-        self.total_time_steps = 20
+        self.total_time_steps = 500000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 20 # simulation time for a training episode
