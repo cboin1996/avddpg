@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
+from workers import evaluator
 import gym
 import matplotlib.pyplot as plt
 import datetime
@@ -132,19 +133,21 @@ def run():
         avg_reward_list.append(avg_reward)
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp)
+    base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}")
     os.mkdir(base_dir)
 
-    actor.save(os.path.join(base_dir, conf.actor_dir))
-    critic.save(os.path.join(base_dir, conf.critic_dir))
+    actor.save(os.path.join(base_dir, conf.actor_fname))
+    critic.save(os.path.join(base_dir, conf.critic_fname))
 
-    target_actor.save(os.path.join(base_dir, conf.t_actor_dir))
-    target_critic.save(os.path.join(base_dir, conf.t_critic_dir))
+    target_actor.save(os.path.join(base_dir, conf.t_actor_fname))
+    target_critic.save(os.path.join(base_dir, conf.t_critic_fname))
 
     plt.plot(avg_reward_list)
     plt.xlabel("Episode")
     plt.ylabel("Avg. Epsiodic Reward")
     plt.savefig(os.path.join(base_dir, conf.fig_path))
 
-    util.save_file(os.path.join(base_dir, conf.param_path), str(conf))
-    util.save_file(os.path.join(base_dir, conf.env_path), str(env))
+    evaluator.run(conf=conf, actor=actor, path_timestamp=base_dir)
+    util.config_writer(os.path.join(base_dir, conf.param_path), conf)
+
+

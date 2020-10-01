@@ -1,8 +1,43 @@
 import enum
 import os, sys
-class Config:
+import random
+class Config():
+    modelA = 'modelA'
+    modelB = 'modelB'
+    model = modelA
+    
+    res_dir = 'res'
+    best_dir = 'best_' + model
+    param_path = "conf.json"
+    best_root = os.path.join(sys.path[0], res_dir, best_dir)
+    best_param_path = os.path.join(best_root, param_path)
+
+
     def __init__(self):
-        self.total_time_steps = 500000
+        """Environment"""
+        self.exact = 'exact'
+        self.euler = 'euler'
+        self.method = self.exact
+
+        
+
+        self.timegap = 1.25
+        self.dyn_coeff = 0.5
+        self.num_states = 3
+        self.num_actions = 1
+        self.reward_ev_coeff = 1
+        self.reward_u_coeff = 0.10
+        self.i_ep = 2.5
+        self.i_ev = 2.5
+        self.i_alead = 0.0
+        self.max_ep = 15
+        self.reset_ep_max = 5
+        self.reset_max_ev = 3
+        self.action_high = 4.5
+        self.action_low = -4.5
+
+        """Trainer"""
+        self.total_time_steps = 20
 
         self.sample_rate = 0.1
         self.episode_sim_time = 20 # simulation time for a training episode
@@ -12,7 +47,6 @@ class Config:
         
         self.gamma = 0.99 # Discount factor for future rewards
 
-        
         # Learning rate for actor-critic models
         self.critic_lr = 0.001
         self.actor_lr = 0.0001
@@ -23,54 +57,44 @@ class Config:
         self.buffer_size=100000
         self.show_env=False
 
-        self.exact = 'exact'
-        self.euler = 'euler'
-        self.method = self.exact
+        """Directories"""
 
-        self.res_dir = 'res'
-        self.best_dir = 'best'
-
-        self.actor_dir = 'actor.h5'
+        self.actor_fname = 'actor.h5'
         self.actor_weights = 'actor_weights.h5'
-        self.critic_dir = 'critic.h5'
+        self.critic_fname = 'critic.h5'
         self.critic_weights = 'critic_weights.h5'
-        self.t_actor_dir = 'target_actor.h5'
+        self.t_actor_fname = 'target_actor.h5'
         self.t_actor_weights = 'target_actor_weights.h5'
-        self.t_critic_dir = 'target_critic.h5'
+        self.t_critic_fname = 'target_critic.h5'
         self.t_critic_weights = 'target_critic_weights.h5'
 
-        self.fig_path = "res.png"
-        self.param_path = "conf.txt"
-        self.env_path = "env.txt"
+        self.fig_path = "reward_curve.png"
+        
+        self.zerofig_name = "Zero"
+        self.constfig_name = "Constant"
+        self.stepfig_name = "Step"
+        self.rampfig_name = "Ramp"
 
-        self.best_actor_conf = os.path.join(sys.path[0], self.res_dir, self.best_dir, self.actor_dir)
-        self.best_actor_weights = os.path.join(sys.path[0], self.res_dir, self.best_dir, self.actor_weights)
+        self.best_actor_conf = os.path.join(self.best_root, self.actor_fname)
+        self.best_actor_weights = os.path.join(self.best_root, self.actor_weights)
 
-        self.best_critic_conf = os.path.join(sys.path[0], self.res_dir, self.best_dir, self.critic_dir)
-        self.best_critic_weights = os.path.join(sys.path[0], self.res_dir, self.best_dir, self.critic_weights)
+        self.best_critic_conf = os.path.join(self.best_root, self.critic_fname)
+        self.best_critic_weights = os.path.join(self.best_root, self.critic_weights)
 
-        self.best_tactor_conf = os.path.join(sys.path[0], self.res_dir, self.best_dir, self.t_actor_dir)
-        self.best_tactor_weights = os.path.join(sys.path[0], self.res_dir, self.best_dir, self.t_actor_weights)
+        self.best_tactor_conf = os.path.join(self.best_root, self.t_actor_fname)
+        self.best_tactor_weights = os.path.join(self.best_root, self.t_actor_weights)
 
-        self.best_tcritic_conf = os.path.join(sys.path[0], self.res_dir, self.best_dir, self.t_critic_dir)
-        self.best_tcritic_weights = os.path.join(sys.path[0], self.res_dir, self.best_dir, self.t_critic_weights)
+        self.best_tcritic_conf = os.path.join(self.best_root, self.t_critic_fname)
+        self.best_tcritic_weights = os.path.join(self.best_root, self.t_critic_weights)
 
         self.dirs = [self.res_dir]
 
-    def __str__(self):
-        return "\n".join([
-                           f"self.total_time_steps = {self.total_time_steps}",
-                           f"self.sample_rate = {self.sample_rate}",
-                           f"self.episode_sim_time = {self.episode_sim_time}",
-                           f"self.steps_per_episode = {self.steps_per_episode}",
-                           f"self.number_of_episodes = {self.number_of_episodes}",
-                           f"self.gamma = {self.gamma}",
-                           f"self.critic_lr = {self.critic_lr}",
-                           f"self.actor_lr = {self.actor_lr}",
-                           f"self.std_dev = {self.std_dev}",
-                           f"self.tau = {self.tau}",
-                           f"self.batch_size = {self.batch_size}",
-                           f"self.buffer_size = {self.buffer_size}",
-                           f"self.show_env = {self.show_env}",
-                           f"self.method = {self.method}",
-        ])
+
+
+if __name__=="__main__":
+    import util
+    conf = Config()
+
+    # util.config_writer("achybreaky.json", conf)
+    loaded_conf = util.config_loader("achybreaky.json")
+    print(loaded_conf.critic_dir)

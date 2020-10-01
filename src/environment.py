@@ -1,6 +1,6 @@
 import random
 import numpy as np
-from src import config
+from src.config import Config
 
 class Platoon:
     def __init__(self, length, T, config):
@@ -58,16 +58,14 @@ class Platoon:
 class Vehicle:
     """Vehicle class based on constant time headway modeling
     """
-    def __init__(self, idx, config):
+    def __init__(self, idx, config: Config):
         """constructor - r, h, L and tau referenced from 
                          https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7146426/
                          a, b taken from https://www.merl.com/publications/docs/TR2019-142.pdf
 
 
         Attributes:
-            r           (float)    : the constant standstill distance for a vehicle (m)
             h           (float)    : the desired time gap (s)
-            L           (float)    : the length of the vehicle (m)
             idx         (int)      : the integer id of the vehicle
             T           (float)    : sample rate
             tau         (float)    : vehicle accel dynamics coefficient
@@ -82,24 +80,22 @@ class Vehicle:
             C           (np.array) : system matrix
             config      (Config)   : configuration class
         """
-        self.r = 8
-        self.h = 1.25
-        self.L = round(random.uniform(2,3), 2)
         self.idx = idx
+        self.h = config.timegap
         self.T = config.sample_rate
-        self.tau = 0.5
-        self.num_states = 3
-        self.num_actions = 1
-        self.a = 1
-        self.b = 0.10
+        self.tau = config.dyn_coeff
+        self.num_states = config.num_states
+        self.num_actions = config.num_actions
+        self.a = config.reward_ev_coeff
+        self.b = config.reward_u_coeff
 
-        self.i_ep = 2.5
-        self.i_ev = 2.5
-        self.i_alead = 0.0
+        self.i_ep = config.i_ep 
+        self.i_ev = config.i_ev 
+        self.i_alead = config.i_alead
 
-        self.max_ep = 15 # max ep error before environment returns terminate = True
-        self.reset_ep_max = 5 # used as the max +/- value when generating new ep on reset
-        self.reset_max_ev = 3 # max +/- value when generating new ev on reset
+        self.max_ep = config.max_ep # max ep error before environment returns terminate = True
+        self.reset_ep_max = config.reset_ep_max # used as the max +/- value when generating new ep on reset
+        self.reset_max_ev = config.reset_max_ev  # max +/- value when generating new ev on reset
 
         self.x = [self.i_ep, # intial gap error (m)
                   self.i_ev, # initial velocity error
@@ -107,60 +103,41 @@ class Vehicle:
         self.reward = 0
         self.u = 0 # the input to the system (vehicle acceleration)
 
-        self.action_high =  4.5
-        self.action_low  = -4.5
+        self.action_high =  config.action_high
+        self.action_low  = config.action_low 
 
-        if config.method == config.euler:
-            self.A = np.array([[1, self.T, -self.T*self.h           ],
-                               [0, 1     , -self.T                  ],
-                               [0, 0     , 1 - self.T * (1/self.tau)]])
-            self.B = np.array( [0, 0,      self.T*(1/self.tau)])
-            self.C = np.array( [0, self.T, 0])
+        if config.model == config.modelA:
+            if config.method == config.euler:
+                self.A = np.array([[1, self.T, -self.T*self.h           ],
+                                [0, 1     , -self.T                  ],
+                                [0, 0     , 1 - self.T * (1/self.tau)]])
+                self.B = np.array( [0, 0,      self.T*(1/self.tau)])
+                self.C = np.array( [0, self.T, 0])
 
-        elif config.method == config.exact:
-            e = np.exp(-self.T/self.tau)
-            self.A = np.array([[1, self.T, - self.h * self.tau 
-                                           + self.h * self.tau * e
-                                           - self.tau * self.T
-                                           + self.tau**2 
-                                           - (self.tau**2) * e],
-                               [0,   1   , -self.tau + self.tau * e],
-                               [0,   0   , e]])
+            elif config.method == config.exact:
+                e = np.exp(-self.T/self.tau)
+                self.A = np.array([[1, self.T, - self.h * self.tau 
+                                            + self.h * self.tau * e
+                                            - self.tau * self.T
+                                            + self.tau**2 
+                                            - (self.tau**2) * e],
+                                [0,   1   , -self.tau + self.tau * e],
+                                [0,   0   , e]])
 
-            B_11 = - self.h * self.T \
-                   - self.h * self.tau * e\
-                   + self.h * self.tau \
-                   - (self.T**2)/2 \
-                   + self.tau * self.T \
-                   + (self.tau ** 2) * e - self.tau**2
-            
-            B_21 = - self.T - self.tau * e + self.tau 
-            B_31 = - e + 1
-            self.B = np.array([B_11, B_21, B_31]) 
-            self.C = np.array([(self.T**2)/2, self.T, 0])
+                B_11 = - self.h * self.T \
+                    - self.h * self.tau * e\
+                    + self.h * self.tau \
+                    - (self.T**2)/2 \
+                    + self.tau * self.T \
+                    + (self.tau ** 2) * e - self.tau**2
+                
+                B_21 = - self.T - self.tau * e + self.tau 
+                B_31 = - e + 1
+                self.B = np.array([B_11, B_21, B_31]) 
+                self.C = np.array([(self.T**2)/2, self.T, 0])
 
-    def __str__(self):
-        return "\n".join([
-                            f"self.r = {self.r}",
-                            f"self.h = {self.h}",
-                            f"self.L = {self.L}",
-                            f"self.idx = {self.idx}",
-                            f"self.T = {self.T}",
-                            f"self.tau = {self.tau }",
-                            f"self.num_states = {self.num_states}",
-                            f"self.num_actions = {self.num_actions}",
-                            f"self.a = {self.a}",
-                            f"self.b = {self.b}",
-                            f"self.i_ep = {self.i_ep}",
-                            f"self.i_ev = {self.i_ev}",
-                            f"self.i_alead = {self.i_alead}",
-                            f"self.x = {self.x}",
-                            f"self.action_high = {self.action_high}",
-                            f"self.action_low = {self.action_low}",
-                            f"self.max_ep = {self.max_ep}",
-                            f"self.reset_ep_max = {self.reset_ep_max}",
-                            f"self.reset_max_ev = {self.reset_max_ev}"
-                        ])
+        elif config.model == config.modelB:
+            pass
     
     def render(self):
         return print(" ".join([
@@ -198,18 +175,8 @@ class Vehicle:
 
 
 if __name__=="__main__":
-    v = Vehicle(0, config.Config)
-    print(v.x)
-    v.step(1.5, 0)
-    print(v.x)
-    v.step(1.5, 0)
-    print(v.x)
-    v.step(3, 0)
-    print(v.x)
-    v.reset()
-    print(v.x)
-    # platoon = Platoon(5, 1e-3)
-    # print(str(platoon))
+
+    pass
 
     
 

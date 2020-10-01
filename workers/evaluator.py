@@ -6,40 +6,54 @@ import gym
 import matplotlib.pyplot as plt
 import h5py
 import math
+from src.config import Config
+import os
 
-def run():
-    conf = config.Config()
-    print(conf)
-    print("")
+def run(conf=None, actor=None, path_timestamp=None):
+    if conf is None:
+        print("Creating new configuration instance from config.py.")
+        conf = config.Config()
+    
+    if path_timestamp is None:
+        model_parent_dir = Config.best_root
+    else:
+        model_parent_dir = path_timestamp
+    
     env = environment.Vehicle(1, conf)
-    print(env)
-    actor = tf.keras.models.load_model(conf.best_actor_conf)
+    if actor is None:
+        actor = tf.keras.models.load_model(conf.best_actor_conf)
 
     simulation_time = 20
     steps = int(simulation_time/conf.sample_rate)
-    env.set_state([5,2.5, -2.5])
-    state = env.x
-
+    
     ou_noise = noise.OUActionNoise(mean=np.zeros(1), std_dev=float(conf.std_dev) 
                                                                    * np.ones(1))
 
-    states = np.zeros((steps, env.num_states)) # states
-    # input_list = np.linspace(-2.5, 2.5, steps)
-    # input_list = [0 if i < (steps/2) else 2.5 for i in range(steps)]
-    input_list = [0 for i in range(steps)]
-    for i in range(steps):
-        state = tf.expand_dims(tf.convert_to_tensor(state), 0)
-        action = ddpgagent.policy(actor(state), ou_noise, env.action_low, env.action_high)
+    input_opts = {conf.zerofig_name : [0 for i in range(steps)],
+                  conf.constfig_name : [2.5 for i in range(steps)],
+                  conf.stepfig_name : [0 if i < (steps/2) else 2.5 for i in range(steps)],
+                  conf.rampfig_name : np.linspace(-2.5, 2.5, steps)}
 
-        state, reward, terminal = env.step(action, input_list[i])
+    for typ, input_list in input_opts.items():
+        env.reset()
+        env.set_state([5,2.5, -2.5])
+        state = env.x
+        states = np.zeros((steps, conf.num_states))
+        for i in range(steps):
+            state = tf.expand_dims(tf.convert_to_tensor(state), 0)
+            action = ddpgagent.policy(actor(state), ou_noise, env.action_low, env.action_high)
 
-        states[i] = state
-    
-    plt.plot(states[:, 0], label="ep")
-    plt.plot(states[:, 1], label="ev")
-    plt.plot(states[:, 2], label="a")
-    plt.plot(input_list, label="a_lead")
-    plt.xlabel(f"{conf.sample_rate}s steps for total time of {simulation_time} s")
-    plt.legend()
-    plt.show()
+            state, reward, terminal = env.step(action, input_list[i])
 
+            states[i] = state
+
+        plt.figure()
+        plt.plot(states[:, 0], label="ep")
+        plt.plot(states[:, 1], label="ev")
+        plt.plot(states[:, 2], label="a")
+        plt.plot(input_list, label="a_lead")
+        plt.xlabel(f"{typ} input response for {conf.sample_rate}s steps (total time of {simulation_time} s)")
+        plt.legend()
+        out_file = os.path.join(model_parent_dir, f"res_{typ}.png")
+        print(f"Generated {typ} simulation plot to -> {out_file}")
+        plt.savefig(out_file)
