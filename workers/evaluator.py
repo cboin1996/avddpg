@@ -9,7 +9,7 @@ import math
 from src.config import Config
 import os
 
-def run(conf=None, actor=None, path_timestamp=None):
+def run(conf=None, actor=None, path_timestamp=None, out=None):
     if conf is None:
         print("Creating new configuration instance from config.py.")
         conf = config.Config()
@@ -38,7 +38,7 @@ def run(conf=None, actor=None, path_timestamp=None):
         env.reset()
         env.set_state([5,2.5, -2.5])
         state = env.x
-        states = np.zeros((steps, conf.num_states))
+        states = np.zeros((steps, env.num_states))
         for i in range(steps):
             state = tf.expand_dims(tf.convert_to_tensor(state), 0)
             action = ddpgagent.policy(actor(state), ou_noise, env.action_low, env.action_high)
@@ -54,6 +54,9 @@ def run(conf=None, actor=None, path_timestamp=None):
         plt.plot(input_list, label="a_lead")
         plt.xlabel(f"{typ} input response for {conf.sample_rate}s steps (total time of {simulation_time} s)")
         plt.legend()
-        out_file = os.path.join(model_parent_dir, f"res_{typ}.png")
-        print(f"Generated {typ} simulation plot to -> {out_file}")
-        plt.savefig(out_file)
+        if out == 'save':
+            out_file = os.path.join(model_parent_dir, f"res_{typ}.png")
+            print(f"Generated {typ} simulation plot to -> {out_file}")
+            plt.savefig(out_file)
+        else:
+            plt.show()

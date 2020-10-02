@@ -4,7 +4,7 @@ import random
 class Config():
     modelA = 'modelA'
     modelB = 'modelB'
-    model = modelA
+    model = modelB
     
     res_dir = 'res'
     best_dir = 'best_' + model
@@ -15,24 +15,25 @@ class Config():
 
     def __init__(self):
         """Environment"""
+        self.pl_size = 1 # the size of the platoon.
+        self.pl_leader_ia = 1 # max initial acceleration of the platoon leader
+        self.pl_leader_tau = 0.5
         self.exact = 'exact'
         self.euler = 'euler'
         self.method = self.exact
 
-        
-
         self.timegap = 1.25
         self.dyn_coeff = 0.5
-        self.num_states = 3
-        self.num_actions = 1
         self.reward_ev_coeff = 1
         self.reward_u_coeff = 0.10
-        self.i_ep = 2.5
-        self.i_ev = 2.5
-        self.i_alead = 0.0
+
         self.max_ep = 15
+        
         self.reset_ep_max = 5
         self.reset_max_ev = 3
+        self.reset_max_a = 1.2
+        self.reset_max_u = 0.8
+
         self.action_high = 4.5
         self.action_low = -4.5
 

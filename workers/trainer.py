@@ -147,7 +147,7 @@ def run():
     plt.ylabel("Avg. Epsiodic Reward")
     plt.savefig(os.path.join(base_dir, conf.fig_path))
 
-    evaluator.run(conf=conf, actor=actor, path_timestamp=base_dir)
+    evaluator.run(conf=conf, actor=actor, path_timestamp=base_dir, out='save')
     util.config_writer(os.path.join(base_dir, conf.param_path), conf)
 
 
