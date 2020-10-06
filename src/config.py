@@ -15,7 +15,7 @@ class Config():
 
     def __init__(self):
         """Environment"""
-        self.pl_size = 1 # the size of the platoon.
+        self.pl_size = 2 # the size of the platoon.
         self.pl_leader_ia = 1 # max initial acceleration of the platoon leader
         self.pl_leader_tau = 0.5
         self.exact = 'exact'
@@ -31,17 +31,19 @@ class Config():
         
         self.reset_ep_max = 5
         self.reset_max_ev = 3
-        self.reset_max_a = 1.2
-        self.reset_max_u = 0.8
+        self.reset_max_a = 1
+        self.reset_max_u = 0.5
 
         self.action_high = 4.5
         self.action_low = -4.5
+
+        self.re_scalar = 0.1 # reward scale
 
         """Trainer"""
         self.total_time_steps = 500000
 
         self.sample_rate = 0.1
-        self.episode_sim_time = 20 # simulation time for a training episode
+        self.episode_sim_time = 60 # simulation time for a training episode
         self.steps_per_episode = int(self.episode_sim_time/self.sample_rate)
 
         self.number_of_episodes = int(self.total_time_steps/self.steps_per_episode)
@@ -56,7 +58,9 @@ class Config():
 
         self.batch_size=64
         self.buffer_size=100000
-        self.show_env=False
+        self.show_env=True
+
+
 
         """Directories"""
 

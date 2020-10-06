@@ -1,7 +1,7 @@
 import random
 import numpy as np
 
-import config
+from src import config
 
 class Platoon:
     def __init__(self, length, config):
@@ -18,21 +18,34 @@ class Platoon:
         self.front_accel = random.uniform(-self.config.pl_leader_ia, self.config.pl_leader_ia)
 
         if config.model == config.modelA:
+            self.state_lbs = {0: "ep", 1 : "ev", 2 : "a"}   
+            self.num_actions = 1
+            self.num_states = 3
             self.pl_leader_tau = self.config.pl_leader_tau
             for i in range(0, length):
                 if i == 0:
-                    self.followers.append(Vehicle, self.config, self.pl_leader_tau, self.front_accel)
+                    self.followers.append(Vehicle(i, self.config, 
+                                          a_lead=self.front_accel, num_states=self.num_states,
+                                          num_actions=self.num_actions))
                 else:
-                    self.followers.append(Vehicle(i, self.config)) # do not chain tau or excel throughout states
+                    self.followers.append(Vehicle(i, self.config, num_states=self.num_states,
+                                          num_actions=self.num_actions)) # do not chain tau or excel throughout states
 
         elif config.model == config.modelB:
+            self.state_lbs = {0: "ep", 1 : "ev", 2 : "a", 3 : "a-1"}
             self.front_exog = random.uniform(-self.config.reset_max_u, self.config.reset_max_u)
             self.pl_leader_tau = self.config.pl_leader_tau
+
+            self.num_actions = 1
+            self.num_states = 4
             for i in range(0, length):
                 if i == 0:
-                    self.followers.append(Vehicle(i, self.config, self.pl_leader_tau, self.front_accel))
+                    self.followers.append(Vehicle(i, self.config, self.pl_leader_tau, self.front_accel,
+                                                  num_states=self.num_states,
+                                                  num_actions=self.num_actions))
                 else:
-                    self.followers.append(Vehicle(i, self.config, self.followers[i-1].tau, self.followers[i-1].x[2])) # chain tau and accel in state
+                    self.followers.append(Vehicle(i, self.config, self.followers[i-1].tau, self.followers[i-1].x[2],
+                                                  num_states=self.num_states, num_actions=self.num_actions)) # chain tau and accel in state
     
     def render(self):
         output = ""
@@ -71,8 +84,11 @@ class Platoon:
             states.append(f_state)
             rewards.append(f_reward)
 
-        reward = self.get_reward(states, rewards)
-        return states, reward
+            if terminal:
+                break
+        
+        reward = self.get_reward(states, rewards) * self.config.re_scalar
+        return states, reward, terminal
     
     def get_reward(self, states, rewards):
         """Calculates the platoons reward
@@ -84,22 +100,27 @@ class Platoon:
         Returns:
             float : the reward of the platoon
         """
-        reward = (1/np.linalg.norm(states))*sum(rewards)
+        reward = (1/self.length)*sum(rewards)
         return reward
 
     def reset(self):
+        states = []
         self.front_accel = random.uniform(-self.config.pl_leader_ia,self.config.pl_leader_ia)
 
         for i in range(len(self.followers)):
             if self.config.model == self.config.modelA:
-                self.followers[i].reset()
+                follower_st = self.followers[i].reset()
 
             elif self.config.model == self.config.modelB:
                 self.front_exog = random.uniform(-self.config.reset_max_u, self.config.reset_max_u)
                 if i == 0:
-                    self.followers[i].reset(self.front_accel)
+                    follower_st = self.followers[i].reset(self.front_accel)
                 else:
-                    self.followers[i].reset(self.followers[i-1].x[2])
+                    follower_st = self.followers[i].reset(self.followers[i-1].x[2])
+
+            states.append(follower_st)
+        
+        return states
 
 
 class Vehicle:
@@ -121,7 +142,7 @@ class Vehicle:
                 C           (np.array) : system matrix
                 config      (Config)   : configuration class
     """
-    def __init__(self, idx, config: config.Config, tau_lead=None, a_lead = None):
+    def __init__(self, idx, config: config.Config, tau_lead=None, a_lead = None, num_states = None, num_actions = None):
         """constructor - r, h, L and tau referenced from 
                          https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7146426/
                          a, b taken from https://www.merl.com/publications/docs/TR2019-142.pdf     
@@ -152,10 +173,10 @@ class Vehicle:
         self.action_high =  self.config.action_high
         self.action_low  = self.config.action_low 
 
-        if self.config.model == self.config.modelA:
-            self.num_states = 3
-            self.num_actions = 1
-            
+        self.num_states = num_states
+        self.num_actions = num_actions
+
+        if self.config.model == self.config.modelA:         
             self.reset() # initializes the states randomly
 
             if self.config.method == self.config.euler:
@@ -255,7 +276,7 @@ class Vehicle:
         else:
             self.reward = self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(u[0])**2
             self.x = self.A.dot(self.x) + self.B.dot(u[0]) + self.C.dot(exog_info)
-        
+
         return self.x, -self.reward, terminal
     
     def reset(self, a_lead=None):
@@ -290,9 +311,10 @@ if __name__=="__main__":
     # v = Vehicle(1, conf)
     pl.render()
     print("\npre reset")
-    pl.step([[2.5], [-1.5]])
+    print(pl.step([[2.5], [-1.5]]))
     pl.render()
     print("\npost")
+    print(pl.reset())
 
     
 
