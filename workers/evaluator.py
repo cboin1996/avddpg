@@ -9,10 +9,13 @@ import math
 from src.config import Config
 import os
 
-def run(conf=None, actor=None, path_timestamp=None, out=None):
+def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, const_bound=None, ramp_bound=None):
     if conf is None:
         print("Creating new configuration instance from config.py.")
         conf = config.Config()
+        conf.step_in = float(step_bound)
+        conf.const_in = float(const_bound)
+        conf.ramp_bound = float(ramp_bound)
     
     if path_timestamp is None:
         model_parent_dir = Config.best_root
@@ -31,9 +34,9 @@ def run(conf=None, actor=None, path_timestamp=None, out=None):
 
 
     input_opts = {conf.zerofig_name : [0 for i in range(steps)],
-                conf.constfig_name : [2.5 for i in range(steps)],
-                conf.stepfig_name : [0 if i < (steps/2) else 2.5 for i in range(steps)],
-                conf.rampfig_name : np.linspace(-2.5, 2.5, steps)}
+                conf.constfig_name : [conf.const_in for i in range(steps)],
+                conf.stepfig_name : [0 if i < (steps/2) else conf.step_in for i in range(steps)],
+                conf.rampfig_name : np.linspace(-conf.ramp_bound, conf.ramp_bound, steps)}
 
     actions = np.zeros((conf.pl_size, env.num_actions))
     pl_states = np.zeros((steps, conf.pl_size, env.num_states))
@@ -58,13 +61,12 @@ def run(conf=None, actor=None, path_timestamp=None, out=None):
             for j in range(env.num_states):
                 plt.subplot(num_rows, num_cols, j+1)
                 plt.plot(pl_states[:,i][:,j], label=f"Vehicle {i}")
-
                 plt.xlabel(f"{conf.sample_rate}s steps (total time of {simulation_time} s)")
                 plt.ylabel(f"{env.state_lbs[j]}")
                 plt.legend()
 
         plt.subplot(num_rows, num_cols, env.num_states + 1)
-        plt.plot(input_list)
+        plt.plot(input_list, label=f"Platoon input")
         plt.xlabel(f"{conf.sample_rate}s steps (total time of {simulation_time} s)")
         plt.ylabel("Platoon input")
         plt.legend()

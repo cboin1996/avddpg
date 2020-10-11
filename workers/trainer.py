@@ -111,24 +111,28 @@ def run():
                         actions, 
                         reward, 
                         states))
-            
             episodic_reward += reward
-
-            for i in range(conf.pl_size):
+            
+            if rbuffer.buffer_counter > conf.batch_size: # first fill the buffer to the batch size
                 
-                # train and update the actor critics
-                critic_grad, actor_grad = learn(conf, rbuffer, 
-                                                actor, critic, 
-                                                target_actor, target_critic,
-                                                i)
                 
-                critic_optimizer.apply_gradients(zip(critic_grad, critic.trainable_variables))
-                actor_optimizer.apply_gradients(zip(actor_grad, actor.trainable_variables))
 
-            # update the target networks
-            tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critic.weights, critic.weights, target_actor.weights, actor.weights)
-            target_actor.set_weights(ta_new_weights)
-            target_critic.set_weights(tc_new_weights)
+                for i in range(conf.pl_size):
+                    
+                    # train and update the actor critics
+                    critic_grad, actor_grad = learn(conf, rbuffer, 
+                                                    actor, critic, 
+                                                    target_actor, target_critic,
+                                                    i)
+                    
+                    critic_optimizer.apply_gradients(zip(critic_grad, critic.trainable_variables))
+                    actor_optimizer.apply_gradients(zip(actor_grad, actor.trainable_variables))
+
+                # update the target networks
+                tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critic.weights, critic.weights, target_actor.weights, actor.weights)
+                target_actor.set_weights(ta_new_weights)
+                target_critic.set_weights(tc_new_weights)
+            
 
             if terminal:
                 break

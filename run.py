@@ -22,7 +22,7 @@ def run(args):
     elif args[1] == 'pid':
         controller.run()
     elif args[1] == 'eval':
-        evaluator.run()
+        evaluator.run(step_bound=args[2], const_bound=args[3], ramp_bound=args[4])
 
 
 if __name__ == "__main__":

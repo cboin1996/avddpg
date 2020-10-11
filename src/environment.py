@@ -15,7 +15,7 @@ class Platoon:
         self.config = config
         self.length = length
         self.followers = []
-        self.front_accel = random.uniform(-self.config.pl_leader_ia, self.config.pl_leader_ia)
+        self.front_accel = random.uniform(-self.config.pl_leader_reset_a, self.config.pl_leader_reset_a)
 
         if config.model == config.modelA:
             self.state_lbs = {0: "ep", 1 : "ev", 2 : "a"}   
@@ -105,7 +105,7 @@ class Platoon:
 
     def reset(self):
         states = []
-        self.front_accel = random.uniform(-self.config.pl_leader_ia,self.config.pl_leader_ia)
+        self.front_accel = random.uniform(-self.config.pl_leader_reset_a,self.config.pl_leader_reset_a)
 
         for i in range(len(self.followers)):
             if self.config.model == self.config.modelA:
@@ -252,7 +252,7 @@ class Vehicle:
                                - e_lead + 1])
 
     def render(self, str_form=False):
-        output = f"|x: {np.round(self.x, 3)}, r: {round(self.reward, 3)}, u: {round(self.u, 3)}, exog: {round(self.exog, 3)}|"
+        output = f"|x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)}|"
         if str_form == True:
             return output
         else:
