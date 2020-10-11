@@ -65,6 +65,7 @@ class Platoon:
         """
         states = []
         rewards = []
+
         for i, action in enumerate(actions):
             follower = self.followers[i]
 
@@ -222,9 +223,9 @@ class Vehicle:
             A_14 =   self.tau_lead * self.T - self.tau_lead ** 2 \
                    + (self.tau_lead ** 2) * e_lead
             
-            A_23 = -self.tau + self.tau * e 
+            A_23 = - self.tau + self.tau * e 
 
-            A_24 =  self.tau_lead - self.tau_lead * e_lead
+            A_24 =   self.tau_lead - self.tau_lead * e_lead
 
             self.A = np.array([[1, self.T, A_13,   A_14],
                                [0, 1     , A_23,   A_24],

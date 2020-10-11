@@ -9,7 +9,11 @@ import math
 from src.config import Config
 import os
 
+import warnings
+
 def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, const_bound=None, ramp_bound=None):
+    warnings.filterwarnings("ignore", category=UserWarning)  # suppress matpltlib warning related to subplot
+    
     if conf is None:
         print("Creating new configuration instance from config.py.")
         conf = config.Config()
@@ -32,7 +36,6 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
     ou_noise = noise.OUActionNoise(mean=np.zeros(1), std_dev=float(conf.std_dev) 
                                                                    * np.ones(1))
 
-
     input_opts = {conf.zerofig_name : [0 for i in range(steps)],
                 conf.constfig_name : [conf.const_in for i in range(steps)],
                 conf.stepfig_name : [0 if i < (steps/2) else conf.step_in for i in range(steps)],
@@ -40,6 +43,7 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
 
     actions = np.zeros((conf.pl_size, env.num_actions))
     pl_states = np.zeros((steps, conf.pl_size, env.num_states))
+    pl_inputs = np.zeros((steps, conf.pl_size, 1))
 
     num_rows = env.num_states + 1
     num_cols = 1
@@ -56,7 +60,8 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
             states, reward, terminal = env.step(actions)
 
             pl_states[i] = states
-
+            pl_inputs[i] = actions
+            
         for i in range(conf.pl_size): # for each follower's states in the platoon states
             for j in range(env.num_states):
                 plt.subplot(num_rows, num_cols, j+1)
@@ -64,12 +69,15 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
                 plt.xlabel(f"{conf.sample_rate}s steps (total time of {simulation_time} s)")
                 plt.ylabel(f"{env.state_lbs[j]}")
                 plt.legend()
+            
+            plt.subplot(num_rows, num_cols, env.num_states + 1) # create subplot for inputs
+            plt.plot(pl_inputs[:, i], label=f"Vehicle {i}")
 
-        plt.subplot(num_rows, num_cols, env.num_states + 1)
-        plt.plot(input_list, label=f"Platoon input")
+        plt.plot(input_list, label=f"Platoon input") # overlay platoon input on inputs plot
         plt.xlabel(f"{conf.sample_rate}s steps (total time of {simulation_time} s)")
-        plt.ylabel("Platoon input")
+        plt.ylabel("inputs")
         plt.legend()
+
         plt.suptitle(f"{typ} input response.")
         plt.tight_layout()
 

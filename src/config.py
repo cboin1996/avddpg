@@ -4,7 +4,7 @@ import random
 class Config():
     modelA = 'modelA'
     modelB = 'modelB'
-    model = modelA
+    model = modelB
     
     res_dir = 'res'
     best_dir = 'best_' + model
@@ -15,7 +15,7 @@ class Config():
 
     def __init__(self):
         """Environment"""
-        self.pl_size = 1 # the size of the platoon.
+        self.pl_size = 3 # the size of the platoon.
         self.pl_leader_reset_a = 0.25 # max initial acceleration of the platoon leader
         self.pl_leader_tau = 0.5
         self.exact = 'exact'
@@ -40,7 +40,7 @@ class Config():
         self.re_scalar = 0.1 # reward scale
 
         """Trainer"""
-        self.total_time_steps = 500000
+        self.total_time_steps = 750000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
