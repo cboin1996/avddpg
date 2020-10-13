@@ -15,7 +15,7 @@ class Config():
 
     def __init__(self):
         """Environment"""
-        self.pl_size = 3 # the size of the platoon.
+        self.pl_size = 1 # the size of the platoon.
         self.pl_leader_reset_a = 0.25 # max initial acceleration of the platoon leader
         self.pl_leader_tau = 0.5
         self.exact = 'exact'
@@ -27,7 +27,7 @@ class Config():
         self.reward_ev_coeff = 1
         self.reward_u_coeff = 0.10
 
-        self.max_ep = 15
+        self.max_ep = 10
         
         self.reset_ep_max = 3.5
         self.reset_max_ev = 3

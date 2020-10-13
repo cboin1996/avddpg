@@ -106,7 +106,6 @@ def run():
                 actions[i] = ddpgagent.policy(actor(tf_prev_state), ou_noise, low_bound, high_bound)
 
             states, reward, terminal = env.step(actions)
-            
             rbuffer.add((prev_states, 
                         actions, 
                         reward, 
@@ -128,10 +127,10 @@ def run():
                     critic_optimizer.apply_gradients(zip(critic_grad, critic.trainable_variables))
                     actor_optimizer.apply_gradients(zip(actor_grad, actor.trainable_variables))
 
-                # update the target networks
-                tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critic.weights, critic.weights, target_actor.weights, actor.weights)
-                target_actor.set_weights(ta_new_weights)
-                target_critic.set_weights(tc_new_weights)
+                    # update the target networks
+                    tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critic.weights, critic.weights, target_actor.weights, actor.weights)
+                    target_actor.set_weights(ta_new_weights)
+                    target_critic.set_weights(tc_new_weights)
             
 
             if terminal:
