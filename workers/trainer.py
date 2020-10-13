@@ -149,10 +149,16 @@ def run():
     os.mkdir(base_dir)
 
     actor.save(os.path.join(base_dir, conf.actor_fname))
+    tf.keras.utils.plot_model(actor, to_file=os.path.join(base_dir, conf.actor_picname), show_shapes=True)
+
     critic.save(os.path.join(base_dir, conf.critic_fname))
+    tf.keras.utils.plot_model(critic, to_file=os.path.join(base_dir, conf.critic_picname), show_shapes=True)
 
     target_actor.save(os.path.join(base_dir, conf.t_actor_fname))
+    tf.keras.utils.plot_model(target_actor, to_file=os.path.join(base_dir, conf.t_actor_picname), show_shapes=True)
+
     target_critic.save(os.path.join(base_dir, conf.t_critic_fname))
+    tf.keras.utils.plot_model(target_critic, to_file=os.path.join(base_dir, conf.t_critic_picname), show_shapes=True)
 
     plt.plot(avg_reward_list)
     plt.xlabel("Episode")

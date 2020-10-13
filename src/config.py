@@ -40,7 +40,7 @@ class Config():
         self.re_scalar = 0.1 # reward scale
 
         """Trainer"""
-        self.total_time_steps = 750000
+        self.total_time_steps = 10
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
@@ -69,12 +69,16 @@ class Config():
         """Directories"""
 
         self.actor_fname = 'actor.h5'
+        self.actor_picname = 'actor.png'
         self.actor_weights = 'actor_weights.h5'
         self.critic_fname = 'critic.h5'
+        self.critic_picname = 'critic.png'
         self.critic_weights = 'critic_weights.h5'
         self.t_actor_fname = 'target_actor.h5'
+        self.t_actor_picname = 'target_actor.png'
         self.t_actor_weights = 'target_actor_weights.h5'
         self.t_critic_fname = 'target_critic.h5'
+        self.t_critic_picname = 'target_critic.png'
         self.t_critic_weights = 'target_critic_weights.h5'
 
         self.fig_path = "reward_curve.png"
