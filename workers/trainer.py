@@ -113,9 +113,6 @@ def run():
             episodic_reward += reward
             
             if rbuffer.buffer_counter > conf.batch_size: # first fill the buffer to the batch size
-                
-                
-
                 for i in range(conf.pl_size):
                     
                     # train and update the actor critics

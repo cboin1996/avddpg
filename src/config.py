@@ -4,7 +4,7 @@ import random
 class Config():
     modelA = 'modelA'
     modelB = 'modelB'
-    model = modelB
+    model = modelA
     
     res_dir = 'res'
     best_dir = 'best_' + model
@@ -28,6 +28,7 @@ class Config():
         self.reward_u_coeff = 0.10
 
         self.max_ep = 10
+        self.max_ev = 5
         
         self.reset_ep_max = 3.5
         self.reset_max_ev = 3

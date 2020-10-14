@@ -57,7 +57,7 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
                 state = tf.expand_dims(tf.convert_to_tensor(state), 0)
                 actions[k] = ddpgagent.policy(actor(state), ou_noise, conf.action_low, conf.action_high)
 
-            states, reward, terminal = env.step(actions)
+            states, reward, terminal = env.step(actions, input_list[i])
 
             pl_states[i] = states
             pl_inputs[i] = actions
@@ -65,15 +65,15 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
         for i in range(conf.pl_size): # for each follower's states in the platoon states
             for j in range(env.num_states):
                 plt.subplot(num_rows, num_cols, j+1)
-                plt.plot(pl_states[:,i][:,j], label=f"Vehicle {i}")
+                plt.plot(pl_states[:,i][:,j], label=f"Vehicle {i+1}")
                 plt.xlabel(f"{conf.sample_rate}s steps (total time of {simulation_time} s)")
                 plt.ylabel(f"{env.state_lbs[j]}")
                 plt.legend()
             
             plt.subplot(num_rows, num_cols, env.num_states + 1) # create subplot for inputs
-            plt.plot(pl_inputs[:, i], label=f"Vehicle {i}")
+            plt.plot(pl_inputs[:, i], label=f"Vehicle {i+1}")
 
-        plt.plot(input_list, label=f"Platoon input") # overlay platoon input on inputs plot
+        plt.plot(input_list, label=f"Lead vehicle input") # overlay platoon input on inputs plot
         plt.xlabel(f"{conf.sample_rate}s steps (total time of {simulation_time} s)")
         plt.ylabel("inputs")
         plt.legend()

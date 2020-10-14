@@ -33,7 +33,7 @@ class Platoon:
 
         elif config.model == config.modelB:
             self.state_lbs = {0: "ep", 1 : "ev", 2 : "a", 3 : "a-1"}
-            self.front_exog = random.uniform(-self.config.reset_max_u, self.config.reset_max_u)
+            self.front_u = random.uniform(-self.config.reset_max_u, self.config.reset_max_u)
             self.pl_leader_tau = self.config.pl_leader_tau
 
             self.num_actions = 1
@@ -53,7 +53,7 @@ class Platoon:
             output += f"{f.render(str_form=True)} <~ "
         print(output, end="\r", flush=True)
     
-    def step(self, actions):
+    def step(self, actions, leader_exog=None):
         """Advances the environment one step
 
         Args:
@@ -71,13 +71,13 @@ class Platoon:
 
             if self.config.model == self.config.modelA:
                 if i == 0:
-                    exog = self.front_accel
+                    exog = self.front_accel if leader_exog == None else leader_exog
                 else:
                     exog = self.followers[i-1].x[2] # leading vehicle accel is the exogenous info for model A
 
             elif self.config.model == self.config.modelB:
                 if i == 0:                    
-                    exog = self.front_exog
+                    exog = self.front_u if leader_exog == None else leader_exog
                 else:
                     exog = self.followers[i-1].u # leading vehicle input is exogenous for model B
 
@@ -113,7 +113,7 @@ class Platoon:
                 follower_st = self.followers[i].reset()
 
             elif self.config.model == self.config.modelB:
-                self.front_exog = random.uniform(-self.config.reset_max_u, self.config.reset_max_u)
+                self.front_u = random.uniform(-self.config.reset_max_u, self.config.reset_max_u)
                 if i == 0:
                     follower_st = self.followers[i].reset(self.front_accel)
                 else:
@@ -163,6 +163,7 @@ class Vehicle:
         self.b = self.config.reward_u_coeff
 
         self.max_ep = self.config.max_ep # max ep error before environment returns terminate = True
+        self.max_ev = self.config.max_ev # max ev error before environment returns terminate = True
         self.reset_ep_max = self.config.reset_ep_max # used as the max +/- value when generating new ep on reset
         self.reset_max_ev = self.config.reset_max_ev  # max +/- value when generating new ev on reset
         self.reset_max_a = self.config.reset_max_a # max +/- value for accel on reset
@@ -269,7 +270,7 @@ class Vehicle:
         terminal = False
         self.u = u[0] 
         self.exog = exog_info 
-        if abs(self.x[0]) > self.max_ep:
+        if abs(self.x[0]) > self.max_ep or abs(self.x[1]) > self.max_ev:
             terminal = True
             self.reward = 1000
             self.x = self.A.dot(self.x) + self.B.dot(u[0]) + self.C.dot(exog_info)
