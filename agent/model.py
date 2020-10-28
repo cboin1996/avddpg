@@ -1,19 +1,21 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 
-def get_actor(num_states, high_bound, weight_init=True):
+def get_actor(num_states, high_bound, weight_init=True, seed_int=None):
     """Get an actor network
 
     Args:
         num_states (int): number of states from the environment
         upper_bound ([type]): used for scaling the actions
+        weight_init (bool): whether to initialize the weights of the network randomly or not
+        seed_int (int): a seed for the random number generator
 
     Returns:
         model: the tensorflow model
     """
     if weight_init == True:
         # Initialize weights between -3e-3 and 3-e3
-        last_init = tf.random_uniform_initializer(minval=-0.003, maxval=0.003)
+        last_init = tf.random_uniform_initializer(minval=-0.003, maxval=0.003, seed=seed_int)
 
     inputs = layers.Input(shape=(num_states))
     out = layers.Dense(300, activation="relu")(inputs)

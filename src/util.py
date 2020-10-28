@@ -30,20 +30,21 @@ def print_dct(dct):
     for k, v in dct.items():
         print(f"{latexify(k)} & {v} \\\\")
 
-def get_random_val(mode, val, std_dev=None, config=None):
+def get_random_val(mode, val=None, std_dev=None, config=None, size=None):
     """Generates a uniformally distributed random variable, or a gaussian random variable centered at 0 by dafault.
 
     Args:
         mode (str): the random generation type
-        val (str): the placeholder str for the random generation type
+        val (float, optional): the bound for uniform number generation
         std_dev (float, optional): the standard devation for guassian function. Defaults to None.
         config (config.Config, optional): the configuration class for the training environment . Defaults to None.
 
     Returns:
         [type]: [description]
     """
+    np.random.seed(config.random_seed)
     if mode == config.uniform:
-        return random.uniform(-val, val)
+        return random.uniform(-1*val, val)
     elif mode == config.normal:
-        return np.random.normal(0, std_dev)
+        return np.random.normal(0, std_dev, size=size)
     

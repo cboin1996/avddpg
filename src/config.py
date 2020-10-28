@@ -46,9 +46,10 @@ class Config():
         self.re_scalar = 0.1 # reward scale
 
         """Trainer"""
+        self.random_seed = 0
         self.normal = 'normal' 
         self.uniform = 'uniform'
-        self.rand_gen = self.uniform # which type of random numbers to use.
+        self.rand_gen = self.normal # which type of random numbers to use.
 
         self.total_time_steps = 1000000
 
@@ -63,7 +64,8 @@ class Config():
         # Learning rate for actor-critic models
         self.critic_lr = 0.001
         self.actor_lr = 0.0001
-        self.std_dev = 0.02 # actor gaussian noise standard dev
+        self.std_dev = 0.02 # orhnstein gaussian noise standard dev
+        self.theta = 0.15 # orhstein theta
         self.tau = 0.001 # target network update coeff
 
         self.batch_size=64

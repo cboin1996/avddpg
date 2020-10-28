@@ -1,11 +1,12 @@
 import numpy as np
-
+from src import util
 class OUActionNoise:
-    def __init__(self, mean, std_dev, theta=0.15, dt=1e-2, x_init=None):
-        self.theta = theta
+    def __init__(self, mean, x_init=None, config=None):
+        self.config = config
+        self.theta = config.theta
         self.mean = mean 
-        self.std_dev = std_dev
-        self.dt = dt
+        self.std_dev = float(conf.std_dev)* np.ones(1)
+        self.dt = config.sample_rate
         self.x_init = x_init
         self.reset()
 
@@ -13,7 +14,7 @@ class OUActionNoise:
         x = (
             self.x_prev
             + self.theta * (self.mean - self.x_prev) * self.dt 
-            + self.std_dev * np.sqrt(self.dt) * np.random.normal(size=self.mean.shape)
+            + self.std_dev * np.sqrt(self.dt) * util.get_random_val(self.config.normal, std_dev=1.0, config=self.config, size=self.mean.shape)
         )
 
         self.x_prev = x

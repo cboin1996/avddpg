@@ -64,12 +64,11 @@ def run():
     print("Max Value of Action ->  {}".format(high_bound))
     print("Min Value of Action ->  {}".format(low_bound))
 
-    ou_noise = noise.OUActionNoise(mean=np.zeros(1), std_dev=float(conf.std_dev) 
-                                                                   * np.ones(1))
-    actor = model.get_actor(num_states, high_bound)
+    ou_noise = noise.OUActionNoise(mean=np.zeros(1), config=conf)
+    actor = model.get_actor(num_states, high_bound, seed_int=conf.random_seed)
     critic = model.get_critic(num_states, num_actions)
 
-    target_actor = model.get_actor(num_states, high_bound)
+    target_actor = model.get_actor(num_states, high_bound, seed_int=conf.random_seed)
     target_critic = model.get_critic(num_states, num_actions)
 
     # Making the weights equal initially
@@ -86,7 +85,8 @@ def run():
                                         conf.batch_size,
                                         num_states,
                                         num_actions,
-                                        conf.pl_size)
+                                        conf.pl_size,
+                                        conf.random_seed)
     
     actions = np.zeros((conf.pl_size, num_actions))
     
@@ -97,7 +97,6 @@ def run():
 
         for _ in range(conf.steps_per_episode):
             if conf.show_env == True:
-                # print(env, end="\r", flush=True)
                 env.render()
             
             for i, prev_state in enumerate(prev_states):
