@@ -138,7 +138,7 @@ def run():
         ep_reward_list.append(episodic_reward)
 
         avg_reward = np.mean(ep_reward_list[-40:])
-        print("\nEpisode * {} * Avg Reward is ==> {}\n".format(ep, avg_reward))
+        print("\nEpisode * {} of {} * Avg Reward is ==> {}\n".format(ep, conf.number_of_episodes, avg_reward))
         avg_reward_list.append(avg_reward)
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")

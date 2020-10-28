@@ -1,24 +1,28 @@
 import random
 import numpy as np
 
-from src import config
+from src import config, util
 
 class Platoon:
-    def __init__(self, length, config):
+    def __init__(self, length, config, rand_states=True):
         """Initialize the platoon
 
         Args:
             length (int): the length of the platoon. Note that the leader parameters
                           such as tau and a_i are passed into the first vehicle 'FOLLOWER'
             config (Config): the global configuration class
+            rand_states (Boolean) : whether the platoon will use random states, or the max values from the config on reset.
         """
         self.config = config
         self.length = length
         self.followers = []
-        self.front_accel = random.uniform(-self.config.pl_leader_reset_a, self.config.pl_leader_reset_a)
+        self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a/2, config=self.config)
 
+        self.rand_states = rand_states
         if config.model == config.modelA:
             self.state_lbs = {0: "ep", 1 : "ev", 2 : "a"}   
+            self.exog_lbl = 'a'
+            self.pl_leader_max_exog = self.config.pl_leader_reset_a # platoon leader output's its acceleration for modelA
             self.num_actions = 1
             self.num_states = 3
             self.pl_leader_tau = self.config.pl_leader_tau
@@ -26,26 +30,28 @@ class Platoon:
                 if i == 0:
                     self.followers.append(Vehicle(i, self.config, 
                                           a_lead=self.front_accel, num_states=self.num_states,
-                                          num_actions=self.num_actions))
+                                          num_actions=self.num_actions, rand_states=self.rand_states))
                 else:
                     self.followers.append(Vehicle(i, self.config, num_states=self.num_states,
-                                          num_actions=self.num_actions)) # do not chain tau or excel throughout states
+                                          num_actions=self.num_actions, rand_states=self.rand_states)) # do not chain tau or excel throughout states
 
         elif config.model == config.modelB:
             self.state_lbs = {0: "ep", 1 : "ev", 2 : "a", 3 : "a-1"}
-            self.front_u = random.uniform(-self.config.reset_max_u, self.config.reset_max_u)
+            self.exog_lbl = 'u'
+            self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u/2, config=self.config)
             self.pl_leader_tau = self.config.pl_leader_tau
-
+            self.pl_leader_max_exog = self.config.reset_max_u # the platoon's leader outputs it's u value. this bound will be used when plotting simulations, as the model will be trained
+                                                          #  to this bound
             self.num_actions = 1
             self.num_states = 4
             for i in range(0, length):
                 if i == 0:
                     self.followers.append(Vehicle(i, self.config, self.pl_leader_tau, self.front_accel,
                                                   num_states=self.num_states,
-                                                  num_actions=self.num_actions))
+                                                  num_actions=self.num_actions, rand_states=self.rand_states))
                 else:
                     self.followers.append(Vehicle(i, self.config, self.followers[i-1].tau, self.followers[i-1].x[2],
-                                                  num_states=self.num_states, num_actions=self.num_actions)) # chain tau and accel in state
+                                                  num_states=self.num_states, num_actions=self.num_actions, rand_states=self.rand_states)) # chain tau and accel in state
     
     def render(self):
         output = ""
@@ -106,14 +112,15 @@ class Platoon:
 
     def reset(self):
         states = []
-        self.front_accel = random.uniform(-self.config.pl_leader_reset_a,self.config.pl_leader_reset_a)
-
+        self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a/2, config=self.config)
+       
         for i in range(len(self.followers)):
             if self.config.model == self.config.modelA:
                 follower_st = self.followers[i].reset()
 
             elif self.config.model == self.config.modelB:
-                self.front_u = random.uniform(-self.config.reset_max_u, self.config.reset_max_u)
+                self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u/2, config=self.config)
+
                 if i == 0:
                     follower_st = self.followers[i].reset(self.front_accel)
                 else:
@@ -143,7 +150,7 @@ class Vehicle:
                 C           (np.array) : system matrix
                 config      (Config)   : configuration class
     """
-    def __init__(self, idx, config: config.Config, tau_lead=None, a_lead = None, num_states = None, num_actions = None):
+    def __init__(self, idx, config: config.Config, tau_lead=None, a_lead = None, num_states = None, num_actions = None, rand_states=True):
         """constructor - r, h, L and tau referenced from 
                          https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7146426/
                          a, b taken from https://www.merl.com/publications/docs/TR2019-142.pdf     
@@ -178,8 +185,9 @@ class Vehicle:
         self.num_states = num_states
         self.num_actions = num_actions
 
+        self.rand_states = rand_states
         if self.config.model == self.config.modelA:         
-            self.reset() # initializes the states randomly
+            self.reset() # initializes the states
 
             if self.config.method == self.config.euler:
                 self.A = np.array([[1, self.T, -self.T*self.h           ],
@@ -270,7 +278,7 @@ class Vehicle:
         terminal = False
         self.u = u[0] 
         self.exog = exog_info 
-        if abs(self.x[0]) > self.max_ep or abs(self.x[1]) > self.max_ev:
+        if abs(self.x[0]) > self.max_ep:
             terminal = True
             self.reward = 1000
             self.x = self.A.dot(self.x) + self.B.dot(u[0]) + self.C.dot(exog_info)
@@ -291,20 +299,34 @@ class Vehicle:
         self.exog_info = 0
 
         if self.config.model == self.config.modelA:
-            self.x =  [random.uniform(-self.reset_ep_max, self.reset_ep_max), # intial gap error (m)
-                       random.uniform(-self.reset_max_ev, self.reset_max_ev), # initial velocity error
-                       random.uniform(-self.reset_max_a,  self.reset_max_a)]   # initial accel of this vehicle
+            if self.rand_states == True:
+                self.x =  [util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.config.reset_ep_max/2, config=self.config), # intial gap error (m)
+                        util.get_random_val(self.config.rand_gen, self.reset_max_ev, std_dev=self.config.reset_max_ev/2, config=self.config), # initial velocity error
+                        util.get_random_val(self.config.rand_gen, self.reset_max_a, std_dev=self.config.reset_max_a/2, config=self.config)] # initial accel of this vehicle
+            else:
+                self.x =  [self.reset_ep_max, # intial gap error (m)
+                           self.reset_max_ev, # initial velocity error
+                           self.reset_max_a]   # initial accel of this vehicle
 
         elif self.config.model == self.config.modelB:
-            self.x = [random.uniform(-self.reset_ep_max, self.reset_ep_max), # intial gap error (m)
-                      random.uniform(-self.reset_max_ev, self.reset_max_ev), # initial velocity error
-                      random.uniform(-self.reset_max_a,  self.reset_max_a), # initial accel of this vehicle
-                      a_lead]   # initial accel of leading vehicle
+
+            if self.rand_states == True:
+                self.x = [util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.config.reset_ep_max/2, config=self.config), # intial gap error (m)
+                            util.get_random_val(self.config.rand_gen, self.reset_max_ev, std_dev=self.config.reset_max_ev/2, config=self.config), # initial velocity error
+                            util.get_random_val(self.config.rand_gen, self.reset_max_a, std_dev=self.config.reset_max_a/2, config=self.config), # initial accel of this vehicle
+                            a_lead]   # initial accel of leading vehicle
+            else:
+                self.x = [self.reset_ep_max, # intial gap error (m)
+                          self.reset_max_ev, # initial velocity error
+                          self.reset_max_a, # initial accel of this vehicle
+                          a_lead]   # initial accel of leading vehicle
 
         return(self.x)
     
     def set_state(self, state):
         self.x = state
+    
+
 
 
 if __name__=="__main__":

@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from agent import model, ddpgagent
 from workers import trainer, controller, evaluator
-from src import config
+from src import config, util
 import os 
 import sys
 
@@ -22,7 +22,13 @@ def run(args):
     elif args[1] == 'pid':
         controller.run()
     elif args[1] == 'eval':
-        evaluator.run(step_bound=args[2], const_bound=args[3], ramp_bound=args[4])
+        if len(args) >= 4: # run evaluator with cl args
+            evaluator.run(root_path=args[2], step_bound=args[3], const_bound=args[4], ramp_bound=args[5])
+        else: # run eval with that of conf.json
+            evaluator.run(root_path=args[2])
+            # evaluator.run(out='save', root_path=args[2])
+    elif args[1] == 'clat':
+        util.print_dct(util.load_json(args[2]))
 
 
 if __name__ == "__main__":
