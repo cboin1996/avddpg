@@ -1,6 +1,5 @@
 import random
 import numpy as np
-
 from src import config, util
 
 class Platoon:
@@ -14,44 +13,32 @@ class Platoon:
             rand_states (Boolean) : whether the platoon will use random states, or the max values from the config on reset.
         """
         self.config = config
+        
         self.length = length
         self.followers = []
-        self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a/2, config=self.config)
+        self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a, config=self.config)
 
         self.rand_states = rand_states
-        if config.model == config.modelA:
-            self.state_lbs = {0: "ep", 1 : "ev", 2 : "a"}   
-            self.exog_lbl = 'a'
-            self.pl_leader_max_exog = self.config.pl_leader_reset_a # platoon leader output's its acceleration for modelA
-            self.num_actions = 1
-            self.num_states = 3
-            self.pl_leader_tau = self.config.pl_leader_tau
-            for i in range(0, length):
-                if i == 0:
-                    self.followers.append(Vehicle(i, self.config, 
-                                          a_lead=self.front_accel, num_states=self.num_states,
-                                          num_actions=self.num_actions, rand_states=self.rand_states))
-                else:
-                    self.followers.append(Vehicle(i, self.config, num_states=self.num_states,
-                                          num_actions=self.num_actions, rand_states=self.rand_states)) # do not chain tau or excel throughout states
+        self.state_lbs = {0: "ep", 1 : "ev", 2 : "a", 3 : "a-1"}
+        self.exog_lbl = 'u'
+        self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
+        self.pl_leader_tau = self.config.pl_leader_tau
 
-        elif config.model == config.modelB:
-            self.state_lbs = {0: "ep", 1 : "ev", 2 : "a", 3 : "a-1"}
-            self.exog_lbl = 'u'
-            self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u/2, config=self.config)
-            self.pl_leader_tau = self.config.pl_leader_tau
-            self.pl_leader_max_exog = self.config.reset_max_u # the platoon's leader outputs it's u value. this bound will be used when plotting simulations, as the model will be trained
-                                                          #  to this bound
-            self.num_actions = 1
+        self.num_actions = 1
+
+        if self.config.model == self.config.modelA:
+            self.num_states = 3
+        else:
             self.num_states = 4
-            for i in range(0, length):
-                if i == 0:
-                    self.followers.append(Vehicle(i, self.config, self.pl_leader_tau, self.front_accel,
-                                                  num_states=self.num_states,
-                                                  num_actions=self.num_actions, rand_states=self.rand_states))
-                else:
-                    self.followers.append(Vehicle(i, self.config, self.followers[i-1].tau, self.followers[i-1].x[2],
-                                                  num_states=self.num_states, num_actions=self.num_actions, rand_states=self.rand_states)) # chain tau and accel in state
+        
+        for i in range(0, length):
+            if i == 0:
+                self.followers.append(Vehicle(i, self.config, self.pl_leader_tau, self.front_accel,
+                                                num_states=self.num_states,
+                                                num_actions=self.num_actions, rand_states=self.rand_states))
+            else:
+                self.followers.append(Vehicle(i, self.config, self.followers[i-1].tau, self.followers[i-1].x[2],
+                                                num_states=self.num_states, num_actions=self.num_actions, rand_states=self.rand_states)) # chain tau and accel in state
     
     def render(self):
         output = ""
@@ -75,17 +62,10 @@ class Platoon:
         for i, action in enumerate(actions):
             follower = self.followers[i]
 
-            if self.config.model == self.config.modelA:
-                if i == 0:
-                    exog = self.front_accel if leader_exog == None else leader_exog
-                else:
-                    exog = self.followers[i-1].x[2] # leading vehicle accel is the exogenous info for model A
-
-            elif self.config.model == self.config.modelB:
-                if i == 0:                    
-                    exog = self.front_u if leader_exog == None else leader_exog
-                else:
-                    exog = self.followers[i-1].u # leading vehicle input is exogenous for model B
+            if i == 0:                    
+                exog = self.front_u if leader_exog == None else leader_exog
+            else:
+                exog = self.followers[i-1].u 
 
             f_state, f_reward, terminal = follower.step(action, exog)
             states.append(f_state)
@@ -94,7 +74,7 @@ class Platoon:
             if terminal:
                 break
         
-        reward = self.get_reward(states, rewards) * self.config.re_scalar
+        reward = self.get_reward(states, rewards)
         return states, reward, terminal
     
     def get_reward(self, states, rewards):
@@ -112,19 +92,15 @@ class Platoon:
 
     def reset(self):
         states = []
-        self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a/2, config=self.config)
+        self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a, config=self.config)
        
         for i in range(len(self.followers)):
-            if self.config.model == self.config.modelA:
-                follower_st = self.followers[i].reset()
+            self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
 
-            elif self.config.model == self.config.modelB:
-                self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u/2, config=self.config)
-
-                if i == 0:
-                    follower_st = self.followers[i].reset(self.front_accel)
-                else:
-                    follower_st = self.followers[i].reset(self.followers[i-1].x[2])
+            if i == 0:
+                follower_st = self.followers[i].reset(self.front_accel)
+            else:
+                follower_st = self.followers[i].reset(self.followers[i-1].x[2])
 
             states.append(follower_st)
         
@@ -133,6 +109,7 @@ class Platoon:
 
 class Vehicle:
     """Vehicle class based on constant time headway modeling
+        Model A and B are functionally the same, just the number of states is only 3 for model A. This means any model implementing this environment should have an input dimension equal to the self.num_states attribute
             Attributes:
                 h           (float)    : the desired time gap (s)
                 idx         (int)      : the integer id of the vehicle
@@ -161,6 +138,7 @@ class Vehicle:
                 a_lead (float, optional) : the acceleration of the leading vehicle in the platoon 
         """
         self.config = config
+        
         self.idx = idx
         self.h = self.config.timegap
         self.T = self.config.sample_rate
@@ -186,80 +164,50 @@ class Vehicle:
         self.num_actions = num_actions
 
         self.rand_states = rand_states
-        if self.config.model == self.config.modelA:         
-            self.reset() # initializes the states
 
-            if self.config.method == self.config.euler:
-                self.A = np.array([[1, self.T, -self.T*self.h           ],
-                                [0, 1     , -self.T                  ],
-                                [0, 0     , 1 - self.T * (1/self.tau)]])
-                self.B = np.array( [0, 0,      self.T*(1/self.tau)])
-                self.C = np.array( [0, self.T, 0])
 
-            elif self.config.method == self.config.exact:
-                e = np.exp(-self.T/self.tau)
-                self.A = np.array([[1, self.T, - self.h * self.tau 
-                                               + self.h * self.tau * e
-                                               - self.tau * self.T
-                                               + self.tau**2 
-                                               - (self.tau**2) * e],
-                                    [0,   1   ,    -self.tau + self.tau * e],
-                                    [0,   0   , e]])
+        e = np.exp(-self.T/self.tau)
+        e_lead = np.exp(-self.T/self.tau_lead)
 
-                B_11 = - self.h * self.T \
-                       - self.h * self.tau * e\
-                       + self.h * self.tau \
-                       - (self.T**2)/2 \
-                       + self.tau * self.T \
-                       + (self.tau ** 2) * e - self.tau**2
-                
-                B_21 = - self.T - self.tau * e + self.tau 
-                B_31 = - e + 1
-                self.B = np.array([B_11, B_21, B_31]) 
-                self.C = np.array([(self.T**2)/2, self.T, 0])
+        self.num_actions = 1
 
-        elif self.config.model == self.config.modelB:
-            e = np.exp(-self.T/self.tau)
-            e_lead = np.exp(-self.T/self.tau_lead)
-            self.num_states = 4
-            self.num_actions = 1
+        self.reset(a_lead) # initializes the states randomly
 
-            self.reset(a_lead) # initializes the states randomly
+        """ Defining the system matrices """
+        A_13 = - self.h * self.tau + self.h * self.tau * e \
+                - self.tau * self.T + self.tau**2 - (self.tau ** 2) * e
 
-            A_13 = - self.h * self.tau + self.h * self.tau * e \
-                   - self.tau * self.T + self.tau**2 - (self.tau ** 2) * e
+        A_14 =   self.tau_lead * self.T - self.tau_lead ** 2 \
+                + (self.tau_lead ** 2) * e_lead
+        
+        A_23 = - self.tau + self.tau * e 
 
-            A_14 =   self.tau_lead * self.T - self.tau_lead ** 2 \
-                   + (self.tau_lead ** 2) * e_lead
-            
-            A_23 = - self.tau + self.tau * e 
+        A_24 =   self.tau_lead - self.tau_lead * e_lead
 
-            A_24 =   self.tau_lead - self.tau_lead * e_lead
+        self.A = np.array([[1, self.T, A_13,   A_14],
+                            [0, 1     , A_23,   A_24],
+                            [0, 0     , e   ,   0   ],
+                            [0, 0     , 0   , e_lead]])
+        
+        B_11 = - self.h * self.T + self.h * self.tau * e \
+                - self.h * self.tau - (self.T ** 2) / 2 + self.tau * self.T \
+                + (self.tau ** 2) * e - self.tau ** 2
+        
+        B_21 = - self.T - self.tau * e + self.tau 
 
-            self.A = np.array([[1, self.T, A_13,   A_14],
-                               [0, 1     , A_23,   A_24],
-                               [0, 0     , e   ,   0   ],
-                               [0, 0     , 0   , e_lead]])
-            
-            B_11 = - self.h * self.T + self.h * self.tau * e \
-                   - self.h * self.tau - (self.T ** 2) / 2 + self.tau * self.T \
-                   + (self.tau ** 2) * e - self.tau ** 2
-            
-            B_21 = - self.T - self.tau * e + self.tau 
+        self.B = np.array([B_11, 
+                            B_21,
+                            -e + 1,
+                            0])
 
-            self.B = np.array([B_11, 
-                               B_21,
-                               -e + 1,
-                               0])
+        C_11 =    (self.T ** 2)/2 - self.tau_lead * self.T \
+                - (self.tau_lead ** 2) * e_lead + self.tau_lead ** 2
+        C_21 =    self.T + self.tau_lead * e_lead - self.tau_lead
 
-            C_11 =    (self.T ** 2)/2 - self.tau_lead * self.T \
-                    - (self.tau_lead ** 2) * e_lead + self.tau_lead ** 2
-            C_21 =    self.T + self.tau_lead * e_lead - self.tau_lead
-
-            self.C = np.array([C_11,
-                               C_21,
-                               0,
-                               - e_lead + 1])
+        self.C = np.array([C_11,
+                            C_21,
+                            0,
+                            - e_lead + 1])
 
     def render(self, str_form=False):
         output = f"|x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)}|"
@@ -278,16 +226,14 @@ class Vehicle:
         terminal = False
         self.u = u[0] 
         self.exog = exog_info 
-        if abs(self.x[0]) > self.max_ep:
-            terminal = True
-            self.reward = 1000
-            self.x = self.A.dot(self.x) + self.B.dot(u[0]) + self.C.dot(exog_info)
-
+        if abs(self.x[0]) > self.config.max_ep and self.config.can_terminate:
+            terminal=True
+            self.reward = self.config.terminal_reward  * self.config.re_scalar
         else:
-            self.reward = self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(u[0])**2
-            self.x = self.A.dot(self.x) + self.B.dot(u[0]) + self.C.dot(exog_info)
+            self.reward = (self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(u[0])**2)  * self.config.re_scalar
+        self.x = self.A.dot(self.x) + self.B.dot(u[0]) + self.C.dot(exog_info)
 
-        return self.x, -self.reward, terminal
+        return self.x[0:self.num_states], -self.reward, terminal # return only the elements that correspond to the state size.
     
     def reset(self, a_lead=None):
         """reset the vehicle environment
@@ -298,47 +244,34 @@ class Vehicle:
         self.u = 0
         self.exog_info = 0
 
-        if self.config.model == self.config.modelA:
-            if self.rand_states == True:
-                self.x =  [util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.config.reset_ep_max/2, config=self.config), # intial gap error (m)
-                        util.get_random_val(self.config.rand_gen, self.reset_max_ev, std_dev=self.config.reset_max_ev/2, config=self.config), # initial velocity error
-                        util.get_random_val(self.config.rand_gen, self.reset_max_a, std_dev=self.config.reset_max_a/2, config=self.config)] # initial accel of this vehicle
-            else:
-                self.x =  [self.reset_ep_max, # intial gap error (m)
-                           self.reset_max_ev, # initial velocity error
-                           self.reset_max_a]   # initial accel of this vehicle
+        if self.rand_states == True:
+            self.x = np.array([util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.config.reset_ep_max, config=self.config), # intial gap error (m)
+                        util.get_random_val(self.config.rand_gen, self.reset_max_ev, std_dev=self.config.reset_max_ev, config=self.config), # initial velocity error
+                        util.get_random_val(self.config.rand_gen, self.reset_max_a, std_dev=self.config.reset_max_a, config=self.config), # initial accel of this vehicle
+                        a_lead])   # initial accel of leading vehicle
+        else:
+            self.x = np.array([self.reset_ep_max, # intial gap error (m)
+                        self.reset_max_ev, # initial velocity error
+                        self.reset_max_a, # initial accel of this vehicle
+                        a_lead])   # initial accel of leading vehicle
 
-        elif self.config.model == self.config.modelB:
-
-            if self.rand_states == True:
-                self.x = [util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.config.reset_ep_max/2, config=self.config), # intial gap error (m)
-                            util.get_random_val(self.config.rand_gen, self.reset_max_ev, std_dev=self.config.reset_max_ev/2, config=self.config), # initial velocity error
-                            util.get_random_val(self.config.rand_gen, self.reset_max_a, std_dev=self.config.reset_max_a/2, config=self.config), # initial accel of this vehicle
-                            a_lead]   # initial accel of leading vehicle
-            else:
-                self.x = [self.reset_ep_max, # intial gap error (m)
-                          self.reset_max_ev, # initial velocity error
-                          self.reset_max_a, # initial accel of this vehicle
-                          a_lead]   # initial accel of leading vehicle
-
-        return(self.x)
+        return (self.x[0:self.num_states])
     
     def set_state(self, state):
         self.x = state
     
 
-
-
-if __name__=="__main__":
-    conf = config.Config()
-    pl = Platoon(2, conf)
-    # v = Vehicle(1, conf)
-    pl.render()
-    print("\npre reset")
-    print(pl.step([[2.5], [-1.5]]))
-    pl.render()
-    print("\npost")
-    print(pl.reset())
+if __name__ == "__main__":
+    print("hello")
+    # conf = config.Config()
+    # pl = Platoon(2, conf)
+    # # v = Vehicle(1, conf)
+    # pl.render()
+    # print("\npre reset")
+    # print(pl.step([[2.5], [-1.5]]))
+    # pl.render()
+    # print("\npost")
+    # print(pl.reset())
 
     
 

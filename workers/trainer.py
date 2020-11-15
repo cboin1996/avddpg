@@ -86,16 +86,15 @@ def run():
                                         num_states,
                                         num_actions,
                                         conf.pl_size,
-                                        conf.random_seed)
+                                        )
     
     actions = np.zeros((conf.pl_size, num_actions))
-    
     for ep in range(conf.number_of_episodes):
 
         prev_states = env.reset()
         episodic_reward = 0
 
-        for _ in range(conf.steps_per_episode):
+        for i in range(conf.steps_per_episode):
             if conf.show_env == True:
                 env.render()
             
@@ -104,7 +103,11 @@ def run():
 
                 actions[i] = ddpgagent.policy(actor(tf_prev_state), ou_noise, low_bound, high_bound)
 
-            states, reward, terminal = env.step(actions)
+            states, reward, terminal = env.step(actions, util.get_random_val(conf.rand_gen, 
+                                                                             conf.reset_max_u, 
+                                                                             std_dev=conf.reset_max_u, 
+                                                                             config=conf)
+)
             rbuffer.add((prev_states, 
                         actions, 
                         reward, 
@@ -141,7 +144,7 @@ def run():
         avg_reward_list.append(avg_reward)
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}")
+    base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}")
     os.mkdir(base_dir)
 
     actor.save(os.path.join(base_dir, conf.actor_fname))
