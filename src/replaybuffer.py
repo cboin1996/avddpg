@@ -7,7 +7,7 @@ class ReplayBuffer:
                  num_states=None,
                  num_actions=None,
                  platoon_size=None,
-                 seed_int=None):
+                 ):
         """Default constructor
 
         Args:
@@ -17,7 +17,7 @@ class ReplayBuffer:
             num_actions (int, optional): action space of env. Default to None.
             seed_int (int, optional): the seed for the number generator
         """
-
+        
         # Number of "experiences" to store at max
         self.buffer_capacity = buffer_capacity
         # Num of tuples to train on.
@@ -25,8 +25,6 @@ class ReplayBuffer:
 
         # Its tells us num of times record() was called.
         self.buffer_counter = 0
-
-        self.seed_int = seed_int
 
         # Instead of list of tuples as the exp.replay concept go
         # We use different np.arrays for each tuple element
@@ -53,7 +51,6 @@ class ReplayBuffer:
         # Get sampling range
         record_range = min(self.buffer_counter, self.buffer_capacity)
         # Randomly sample indices
-        np.random.seed(self.seed_int)
         batch_indices = np.random.choice(record_range, self.batch_size)
 
         # Convert to tensors

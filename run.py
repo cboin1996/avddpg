@@ -4,6 +4,7 @@ from agent import model, ddpgagent
 from workers import trainer, controller, evaluator
 from src import config, util
 import os 
+import random
 import sys
 
 def inititialize_dirs(config):
@@ -14,9 +15,17 @@ def inititialize_dirs(config):
             print(f"Making dir {dir_path}")
             os.mkdir(dir_path)
     
+
+    
 def run(args):
     conf = config.Config()
     inititialize_dirs(conf)
+    # set the seed for everything
+    np.random.seed(conf.random_seed)
+    tf.random.set_seed(conf.random_seed)
+    os.environ['PYTHONHASHSEED']=str(conf.random_seed)
+    random.seed(conf.random_seed)
+    
     if args[1] == 'tr':
         trainer.run()
     elif args[1] == 'pid':
@@ -25,7 +34,7 @@ def run(args):
         if len(args) >= 4: # run evaluator with cl args
             evaluator.run(root_path=args[2], step_bound=args[3], const_bound=args[4], ramp_bound=args[5])
         else: # run eval with that of conf.json
-            evaluator.run(root_path=args[2])
+            evaluator.run(root_path=args[2], out='save', seed=False) # already seeded above
             # evaluator.run(out='save', root_path=args[2])
     elif args[1] == 'clat':
         util.print_dct(util.load_json(args[2]))

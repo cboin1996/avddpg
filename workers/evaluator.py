@@ -8,12 +8,12 @@ import h5py
 import math
 from src.config import Config
 import os
+import random
 
 import warnings
 
-def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, const_bound=None, ramp_bound=None, root_path=None):
-    warnings.filterwarnings("ignore", category=UserWarning)  # suppress matpltlib warning related to subplot
-    
+def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, const_bound=None, ramp_bound=None, root_path=None, seed=True):
+
     if conf is None:
         conf_path = os.path.join(root_path, config.Config.param_path)
         print(f"Loading configuration instance from {conf_path}")
@@ -24,31 +24,23 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
     else:
         model_parent_dir = path_timestamp
     
-    env = environment.Platoon(conf.pl_size, conf, rand_states=False) # do not use random states here, for consistency across training sessions
+    if seed:
+        np.random.seed(conf.random_seed)
+        tf.random.set_seed(conf.random_seed)
+        os.environ['PYTHONHASHSEED']=str(conf.random_seed)
+        random.seed(conf.random_seed)
 
-    if step_bound is None or const_bound is None or ramp_bound is None:
-        print(f"Setting step, const and ramp defaults all to {env.pl_leader_max_exog}")
-        step_bound = env.pl_leader_max_exog
-        const_bound = env.pl_leader_max_exog
-        ramp_bound = env.pl_leader_max_exog
+    env = environment.Platoon(conf.pl_size, conf, rand_states=False) # do not use random states here, for consistency across evaluation sessions
 
     if actor is None:
         actor = tf.keras.models.load_model(os.path.join(root_path, conf.actor_fname))
 
-    simulation_time = 20
-    steps = int(simulation_time/conf.sample_rate)
-    
-    ou_noise = noise.OUActionNoise(mean=np.zeros(1), std_dev=float(conf.std_dev) 
-                                                                   * np.ones(1))
-
-    input_opts = {conf.zerofig_name : [0 for _ in range(steps)],
-                conf.constfig_name : [const_bound for _ in range(steps)],
-                conf.stepfig_name : [0 if i < (steps/2) else step_bound for i in range(steps)],
-                conf.rampfig_name : np.linspace(-1*ramp_bound, ramp_bound, steps)}
+    input_opts = {conf.guasfig_name : [util.get_random_val(conf.rand_gen, conf.reset_max_u, std_dev=conf.reset_max_u, config=conf)
+                                        for _ in range(conf.steps_per_episode)]}
 
     actions = np.zeros((conf.pl_size, env.num_actions))
-    pl_states = np.zeros((steps, conf.pl_size, env.num_states))
-    pl_inputs = np.zeros((steps, conf.pl_size, 1))
+    pl_states = np.zeros((conf.steps_per_episode, conf.pl_size, env.num_states))
+    pl_inputs = np.zeros((conf.steps_per_episode, conf.pl_size, 1))
 
     num_rows = env.num_states + 1
     num_cols = 1
@@ -57,10 +49,10 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
         plt.figure(figsize = (4,12))
         states = env.reset()
         
-        for i in range(steps):
+        for i in range(conf.steps_per_episode):
             for k, state in enumerate(states):
                 state = tf.expand_dims(tf.convert_to_tensor(state), 0)
-                actions[k] = ddpgagent.policy(actor(state), ou_noise, conf.action_low, conf.action_high)
+                actions[k] = ddpgagent.policy(actor(state), lbound=conf.action_low, hbound=conf.action_high) # do not use noise in the simulation
 
             states, reward, terminal = env.step(actions, input_list[i])
             cum_reward += reward
@@ -71,7 +63,7 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
             for j in range(env.num_states):
                 plt.subplot(num_rows, num_cols, j+1)
                 plt.plot(pl_states[:,i][:,j], label=f"Vehicle {i+1}")
-                plt.xlabel(f"{conf.sample_rate}s steps (total time of {simulation_time} s)")
+                plt.xlabel(f"{conf.sample_rate}s steps (total time of {conf.episode_sim_time} s)")
                 plt.ylabel(f"{env.state_lbs[j]}")
                 plt.legend()
             
@@ -79,11 +71,11 @@ def run(conf=None, actor=None, path_timestamp=None, out=None, step_bound=None, c
             plt.plot(pl_inputs[:, i], label=f"Vehicle {i+1}")
 
         plt.plot(input_list, label=f"Platoon leader's {env.exog_lbl}") # overlay platoon leaders transmitted data
-        plt.xlabel(f"{conf.sample_rate}s steps (total time of {simulation_time} s)")
+        plt.xlabel(f"{conf.sample_rate}s steps (total time of {conf.episode_sim_time} s)")
         plt.ylabel("u")
         plt.legend()
 
-        plt.suptitle(f"{conf.model} {typ} input response\n with cumulative reward of {round(cum_reward, 2)}")
+        plt.suptitle(f"{conf.model} {typ} input response\n with cumulative reward of {round(cum_reward, 2)}\n")
         plt.tight_layout()
 
         if out == 'save':

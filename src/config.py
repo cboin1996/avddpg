@@ -4,7 +4,7 @@ import random
 class Config():
     modelA = 'ModelA'
     modelB = 'ModelB'
-    model = modelA
+    model = modelB
     
     res_dir = 'res'
     param_path = "conf.json"
@@ -20,8 +20,8 @@ class Config():
 
         """Environment"""
         self.pl_size = 1 # the size of the platoon.
-        self.pl_leader_reset_a = 0.25 # max initial acceleration of the platoon leader (exogenous info for modelA, part of the first vehicle's state for modelB)
-        self.reset_max_u = 0 # max initial control input of the platoon leader (exogenous info for modelB)
+        self.pl_leader_reset_a = 0 # max initial acceleration of the platoon leader (used in the calculation for \dot{a_{i-1}}) (bound for uniform, std_dev for normal)
+        self.reset_max_u = 0.100 # max initial control input of the platoon leader (used in the calculation for \dot{a_{i-1}}, (bound for uniform, std_dev for normal)
 
         self.pl_leader_tau = 0.5
         self.exact = 'exact'
@@ -36,17 +36,19 @@ class Config():
         self.max_ep = 10
         self.max_ev = 10
         
-        self.reset_ep_max = 3.5
-        self.reset_max_ev = 3
-        self.reset_max_a = 0.1 # max accel of a vehicle upon reset
+        self.reset_ep_max = 1.5
+        self.reset_max_ev = 1.5
+        self.reset_max_a = 0.05 # max accel of a vehicle upon reset
 
         self.action_high =4.5
         self.action_low = -4.5
 
         self.re_scalar = 0.1 # reward scale
+        self.terminal_reward = 1000
 
         """Trainer"""
-        self.random_seed = 0
+        self.can_terminate = True
+        self.random_seed = 2
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
@@ -66,12 +68,12 @@ class Config():
         self.actor_lr = 0.0001
         self.std_dev = 0.02 # orhnstein gaussian noise standard dev
         self.theta = 0.15 # orhstein theta
+        self.ou_dt = 1e-2 # ornstein dt
         self.tau = 0.001 # target network update coeff
 
         self.batch_size=64
         self.buffer_size=100000
         self.show_env=False
-
         """Directories"""
 
         self.actor_fname = 'actor.h5'
@@ -90,7 +92,7 @@ class Config():
         self.fig_path = "reward_curve.png"
         
         self.zerofig_name = "zero"
-        self.constfig_name = "constant"
+        self.guasfig_name = "guassian"
         self.stepfig_name = "step"
         self.rampfig_name = "ramp"
 

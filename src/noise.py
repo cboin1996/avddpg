@@ -3,10 +3,11 @@ from src import util
 class OUActionNoise:
     def __init__(self, mean, x_init=None, config=None):
         self.config = config
-        self.theta = config.theta
+        self.theta = self.config.theta
         self.mean = mean 
-        self.std_dev = float(conf.std_dev)* np.ones(1)
-        self.dt = config.sample_rate
+        
+        self.std_dev = float(self.config.std_dev)* np.ones(1)
+        self.dt = self.config.ou_dt
         self.x_init = x_init
         self.reset()
 

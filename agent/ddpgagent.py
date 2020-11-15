@@ -3,7 +3,7 @@ import numpy as np
 from agent import model
 
 
-def policy(actor_state, noise_object, lbound, hbound):
+def policy(actor_state, noise_object=None, lbound=None, hbound=None):
     """gets the policy from the model
 
     Args:
@@ -17,9 +17,13 @@ def policy(actor_state, noise_object, lbound, hbound):
         list: the policy from the prediction
     """
     sampled_actions = tf.squeeze(actor_state)
-    noise = noise_object()
-    # Adding noise to action
-    sampled_actions = sampled_actions.numpy() + noise
+    if noise_object is not None:
+        noise = noise_object()
+        # Adding noise to action
+        sampled_actions = sampled_actions.numpy() + noise
+    else:
+        sampled_actions = sampled_actions.numpy()
+
 
     # We make sure action is within bounds
     legal_action = np.clip(sampled_actions, lbound, hbound)
