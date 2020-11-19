@@ -14,6 +14,9 @@ class Config():
         self.modelA = self.modelA
         self.modelB = self.modelB
         self.model = self.model
+        self.dcntrl = "decentralized"
+        self.cntrl = "centralized"
+        self.framework = self.dcntrl
         
         self.res_dir = self.res_dir
         self.param_path = self.param_path

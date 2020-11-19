@@ -26,9 +26,6 @@ def learn(config, rbuffer, actor_model, critic_model,
     """
     # Sample replay buffer
     states_batch, actions_batch, reward_batch, next_states_batch = rbuffer.sample()
-    state_batch = states_batch[:, pl_idx]
-    action_batch = actions_batch[:, pl_idx]
-    next_state_batch = next_states_batch[:, pl_idx]
 
     # Update and train the actor critic networks
     with tf.GradientTape() as tape:
@@ -48,15 +45,27 @@ def learn(config, rbuffer, actor_model, critic_model,
     actor_grad = tape.gradient(actor_loss, actor_model.trainable_variables)
     return critic_grad, actor_grad
 
+
 def run():
     conf = config.Config()
 
     env = environment.Platoon(conf.pl_size, conf)
+
     print(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
     num_states = env.num_states
-    print("Size of State Space ->  {}".format(num_states))
-    num_actions = env.num_actions
-    print("Size of Action Space ->  {}".format(num_actions))
+    
+    if conf.framework == conf.cntrl:
+        num_models = 1
+        num_states = conf.pl_size * env.num_states
+        num_actions = conf.pl_size * env.num_actions
+    else if conf.framework == conf.dcntrl:
+        num_models = conf.pl_size
+        num_states = env.num_states
+        num_actions = env.num_actions
+
+    print(f"Number of models : {num_models}")
+    print("Size of Model state space ->  {}".format(num_states))
+    print("Size of Model action Space ->  {}".format(num_actions))
 
     high_bound = conf.action_high
     low_bound  = conf.action_low
@@ -64,31 +73,49 @@ def run():
     print("Max Value of Action ->  {}".format(high_bound))
     print("Min Value of Action ->  {}".format(low_bound))
 
-    ou_noise = noise.OUActionNoise(mean=np.zeros(1), config=conf)
-    actor = model.get_actor(num_states, high_bound, seed_int=conf.random_seed)
-    critic = model.get_critic(num_states, num_actions)
-
-    target_actor = model.get_actor(num_states, high_bound, seed_int=conf.random_seed)
-    target_critic = model.get_critic(num_states, num_actions)
-
-    # Making the weights equal initially
-    target_actor.set_weights(actor.get_weights())
-    target_critic.set_weights(critic.get_weights())
-
-    critic_optimizer = tf.keras.optimizers.Adam(conf.critic_lr)
-    actor_optimizer = tf.keras.optimizers.Adam(conf.actor_lr)
-
-    ep_reward_list = []
-    avg_reward_list = []
-
-    rbuffer = replaybuffer.ReplayBuffer(conf.buffer_size, 
-                                        conf.batch_size,
-                                        num_states,
-                                        num_actions,
-                                        conf.pl_size,
-                                        )
+    ou_noises = []
+    actors = []
+    critics = []
+    target_actors = []
+    target_critics = []
+    actor_optimizers = []
+    critic_optimizers = []
+    ep_rewards_lists = []
+    avg_reward_lists = []
+    rbuffers = []
     
-    actions = np.zeros((conf.pl_size, num_actions))
+    for i in range(num_models):
+        ou_noises.append(noise.OUActionNoise(mean=np.zeros(1), config=conf))
+        actor = model.get_actor(num_states, high_bound, seed_int=conf.random_seed)
+        critic = model.get_critic(num_states, num_actions)
+
+        actors.append(actor)
+        critics.append(critic)
+
+        target_actor = model.get_actor(num_states, high_bound, seed_int=conf.random_seed)
+        target_critic = model.get_critic(num_states, num_actions)
+
+        # Making the weights equal initially
+        target_actor.set_weights(actor.get_weights())
+        target_critic.set_weights(critic.get_weights())
+        target_actors.append(target_actor)
+        target_critics.append(target_critic)
+
+        critic_optimizers.append(tf.keras.optimizers.Adam(conf.critic_lr))
+        actor_optimizers.append(tf.keras.optimizers.Adam(conf.actor_lr))
+
+        ep_reward_lists.append([])
+        avg_reward_lists.append([])
+
+        rbuffers.append(replaybuffer.ReplayBuffer(conf.buffer_size, 
+                                            conf.batch_size,
+                                            num_states,
+                                            num_actions,
+                                            conf.pl_size,
+                                            ))
+    
+    actions = np.zeros((num_models, num_actions)) # TODO: Fixme
+
     for ep in range(conf.number_of_episodes):
 
         prev_states = env.reset()
@@ -98,7 +125,7 @@ def run():
             if conf.show_env == True:
                 env.render()
             
-            for i, prev_state in enumerate(prev_states):
+            for i, prev_state in enumerate(prev_states): # iterate the list of actors here... passing in single state or concatanated for centrlz
                 tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
                 actions[i] = ddpgagent.policy(actor(tf_prev_state), ou_noise, low_bound, high_bound)
@@ -106,12 +133,12 @@ def run():
             states, reward, terminal = env.step(actions, util.get_random_val(conf.rand_gen, 
                                                                              conf.reset_max_u, 
                                                                              std_dev=conf.reset_max_u, 
-                                                                             config=conf)
-)
+                                                                             config=conf))
             rbuffer.add((prev_states, 
                         actions, 
                         reward, 
                         states))
+
             episodic_reward += reward
             
             if rbuffer.buffer_counter > conf.batch_size: # first fill the buffer to the batch size
@@ -131,7 +158,6 @@ def run():
                     target_actor.set_weights(ta_new_weights)
                     target_critic.set_weights(tc_new_weights)
             
-
             if terminal:
                 break
 
@@ -166,5 +192,3 @@ def run():
 
     evaluator.run(conf=conf, actor=actor, path_timestamp=base_dir, out='save')
     util.config_writer(os.path.join(base_dir, conf.param_path), conf)
-
-
