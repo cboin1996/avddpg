@@ -28,10 +28,10 @@ class ReplayBuffer:
 
         # Instead of list of tuples as the exp.replay concept go
         # We use different np.arrays for each tuple element
-        self.state_buffer = np.zeros((self.buffer_capacity, platoon_size, num_states))
-        self.action_buffer = np.zeros((self.buffer_capacity, platoon_size, num_actions))
+        self.state_buffer = np.zeros((self.buffer_capacity, num_states))
+        self.action_buffer = np.zeros((self.buffer_capacity, num_actions))
         self.reward_buffer = np.zeros((self.buffer_capacity, 1))
-        self.next_state_buffer = np.zeros((self.buffer_capacity, platoon_size, num_states))
+        self.next_state_buffer = np.zeros((self.buffer_capacity, num_states))
 
     # Takes (s,a,r,s') obervation tuple as input
     def add(self, obs_tuple):

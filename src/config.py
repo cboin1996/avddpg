@@ -14,12 +14,15 @@ class Config():
         self.modelA = self.modelA
         self.modelB = self.modelB
         self.model = self.model
+        self.dcntrl = "decentralized"
+        self.cntrl = "centralized"
+        self.framework = self.cntrl
         
         self.res_dir = self.res_dir
         self.param_path = self.param_path
 
         """Environment"""
-        self.pl_size = 1 # the size of the platoon.
+        self.pl_size = 2 # the size of the platoon.
         self.pl_leader_reset_a = 0 # max initial acceleration of the platoon leader (used in the calculation for \dot{a_{i-1}}) (bound for uniform, std_dev for normal)
         self.reset_max_u = 0.100 # max initial control input of the platoon leader (used in the calculation for \dot{a_{i-1}}, (bound for uniform, std_dev for normal)
 
@@ -63,6 +66,8 @@ class Config():
         
         self.gamma = 0.99 # Discount factor for future rewards
 
+        self.centrl_hidd_mult = 1.2
+        
         # Learning rate for actor-critic models
         self.critic_lr = 0.001
         self.actor_lr = 0.0001
@@ -76,18 +81,18 @@ class Config():
         self.show_env=False
         """Directories"""
 
-        self.actor_fname = 'actor.h5'
-        self.actor_picname = 'actor.png'
-        self.actor_weights = 'actor_weights.h5'
-        self.critic_fname = 'critic.h5'
-        self.critic_picname = 'critic.png'
-        self.critic_weights = 'critic_weights.h5'
-        self.t_actor_fname = 'target_actor.h5'
-        self.t_actor_picname = 'target_actor.png'
-        self.t_actor_weights = 'target_actor_weights.h5'
-        self.t_critic_fname = 'target_critic.h5'
-        self.t_critic_picname = 'target_critic.png'
-        self.t_critic_weights = 'target_critic_weights.h5'
+        self.actor_fname = 'actor%s.h5'
+        self.actor_picname = 'actor%s.png'
+        self.actor_weights = 'actor_weights%s.h5'
+        self.critic_fname = 'critic%s.h5'
+        self.critic_picname = 'critic%s.png'
+        self.critic_weights = 'critic_weights%s.h5'
+        self.t_actor_fname = 'target_actor%s.h5'
+        self.t_actor_picname = 'target_actor%s.png'
+        self.t_actor_weights = 'target_actor_weights%s.h5'
+        self.t_critic_fname = 'target_critic%s.h5'
+        self.t_critic_picname = 'target_critic%s.png'
+        self.t_critic_weights = 'target_critic_weights%s.h5'
 
         self.fig_path = "reward_curve.png"
         
