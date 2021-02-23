@@ -24,12 +24,24 @@ class Platoon:
         self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
         self.pl_leader_tau = self.config.pl_leader_tau
 
-        self.num_actions = 1
+        if self.config.framework == self.config.cntrl:
+            self.multiplier = self.length
+            self.hidden_multiplier = self.config.centrl_hidd_mult
+            self.num_models = 1
+        else:
+            self.multiplier = 1
+            self.hidden_multiplier = 1
+            self.num_models = self.length
+
+        self.def_num_actions = 1 # useful for plotting
+        self.num_actions = self.def_num_actions * self.multiplier
 
         if self.config.model == self.config.modelA:
-            self.num_states = 3
+            self.def_num_states = 3 # useful for tracking the states numbers in the followers
+            self.num_states = self.def_num_states * self.multiplier
         else:
-            self.num_states = 4
+            self.def_num_states = 4
+            self.num_states = self.def_num_states * self.multiplier
         
         for i in range(0, length):
             if i == 0:
@@ -58,7 +70,7 @@ class Platoon:
         """
         states = []
         rewards = []
-
+        terminals = []
         for i, action in enumerate(actions):
             follower = self.followers[i]
 
@@ -67,15 +79,16 @@ class Platoon:
             else:
                 exog = self.followers[i-1].u 
 
-            f_state, f_reward, terminal = follower.step(action, exog)
+            f_state, f_reward, f_terminal = follower.step(action, exog)
             states.append(f_state)
             rewards.append(f_reward)
+            terminals.append(f_terminal)
+        if self.config.framework == self.config.cntrl: 
+            states = [list(np.concatenate(states).flat)]
+            rewards = [self.get_reward(states, rewards)]
 
-            if terminal:
-                break
-        
-        reward = self.get_reward(states, rewards)
-        return states, reward, terminal
+        platoon_done = True if True in terminals else False
+        return states, rewards, platoon_done
     
     def get_reward(self, states, rewards):
         """Calculates the platoons reward
@@ -103,7 +116,10 @@ class Platoon:
                 follower_st = self.followers[i].reset(self.followers[i-1].x[2])
 
             states.append(follower_st)
-        
+
+        if self.config.framework == self.config.cntrl: 
+            states = [list(np.concatenate(states).flat)]
+
         return states
 
 
@@ -224,14 +240,14 @@ class Vehicle:
             exog_info (float): the exogenous information given to the vehicle
         """
         terminal = False
-        self.u = u[0] 
+        self.u = u
         self.exog = exog_info 
         if abs(self.x[0]) > self.config.max_ep and self.config.can_terminate:
             terminal=True
             self.reward = self.config.terminal_reward  * self.config.re_scalar
         else:
-            self.reward = (self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(u[0])**2)  * self.config.re_scalar
-        self.x = self.A.dot(self.x) + self.B.dot(u[0]) + self.C.dot(exog_info)
+            self.reward = (self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(self.u)**2)  * self.config.re_scalar
+        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
 
         return self.x[0:self.num_states], -self.reward, terminal # return only the elements that correspond to the state size.
     
@@ -262,7 +278,8 @@ class Vehicle:
     
 
 if __name__ == "__main__":
-    print("hello")
+    pass
+    # print("hello")
     # conf = config.Config()
     # pl = Platoon(2, conf)
     # # v = Vehicle(1, conf)

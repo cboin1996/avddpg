@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 
-def get_actor(num_states, high_bound, weight_init=True, seed_int=None):
+def get_actor(num_states, num_actions, high_bound, weight_init=True, seed_int=None, hidd_mult=1):
     """Get an actor network
 
     Args:
@@ -18,21 +18,21 @@ def get_actor(num_states, high_bound, weight_init=True, seed_int=None):
         last_init = tf.random_uniform_initializer(minval=-0.003, maxval=0.003, seed=seed_int)
 
     inputs = layers.Input(shape=(num_states))
-    out = layers.Dense(300, activation="relu")(inputs)
+    out = layers.Dense(int(300 * hidd_mult), activation="relu")(inputs)
     out = layers.BatchNormalization()(out)
-    out = layers.Dense(600, activation="relu")(out)
+    out = layers.Dense(int(600 * hidd_mult), activation="relu")(out)
     out = layers.BatchNormalization()(out)
     if weight_init == True:
-        outputs = layers.Dense(1, activation="tanh", kernel_initializer=last_init)(out)
+        outputs = layers.Dense(num_actions, activation="tanh", kernel_initializer=last_init)(out)
     else:
-        outputs = layers.Dense(1, activation="tanh")(out)
+        outputs = layers.Dense(num_actions, activation="tanh")(out)
 
     outputs = outputs * high_bound
     model = tf.keras.Model(inputs, outputs)
     return model
 
 
-def get_critic(num_states, num_actions):
+def get_critic(num_states, num_actions, hidd_mult=1):
     """get the critic network
 
     Args:
@@ -44,21 +44,21 @@ def get_critic(num_states, num_actions):
     """
     # State as input
     state_input = layers.Input(shape=(num_states))
-    state_out = layers.Dense(300, activation="relu")(state_input)
+    state_out = layers.Dense(int(300 * hidd_mult), activation="relu")(state_input)
     state_out = layers.BatchNormalization()(state_out)
 
     # Action as input
     action_input = layers.Input(shape=(num_actions))
-    action_out = layers.Dense(600, activation="relu")(action_input)
+    action_out = layers.Dense(int(600 * hidd_mult), activation="relu")(action_input)
     action_out = layers.BatchNormalization()(action_out)
 
     # Both are passed through seperate layer before concatenating
     concat = layers.Concatenate()([state_out, action_out])
 
-    out = layers.Dense(600, activation="relu")(concat)
+    out = layers.Dense(int(600 * hidd_mult), activation="relu")(concat)
     out = layers.BatchNormalization()(out)
 
-    outputs = layers.Dense(1)(out)
+    outputs = layers.Dense(num_actions)(out)
 
     # Outputs single value for give state-action
     model = tf.keras.Model([state_input, action_input], outputs)
