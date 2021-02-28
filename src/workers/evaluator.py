@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
-import gym
 import matplotlib.pyplot as plt
 import h5py
 import math

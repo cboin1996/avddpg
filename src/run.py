@@ -7,19 +7,11 @@ import os
 import random
 import sys
 
-def inititialize_dirs(config):
-    
-    for directory in config.dirs:
-        dir_path = os.path.join(sys.path[0], directory)
-        if not os.path.exists(dir_path):
-            print(f"Making dir {dir_path}")
-            os.mkdir(dir_path)
-    
 
-    
+
 def run(args):
     conf = config.Config()
-    inititialize_dirs(conf)
+    util.inititialize_dirs(conf)
     # set the seed for everything
     np.random.seed(conf.random_seed)
     tf.random.set_seed(conf.random_seed)

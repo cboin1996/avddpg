@@ -4,7 +4,7 @@ import tensorflow as tf
 from types import SimpleNamespace
 import numpy as np
 import random
-
+import os, sys
 def save_file(fpath, txt):
     with open(fpath, 'w') as f:
         print(f"Saving {txt} to : {fpath}")
@@ -29,6 +29,13 @@ def latexify(s):
 def print_dct(dct):
     for k, v in dct.items():
         print(f"{latexify(k)} & {v} \\\\")
+
+def inititialize_dirs(config):
+    for directory in config.dirs:
+        dir_path = os.path.join(sys.path[0], directory)
+        if not os.path.exists(dir_path):
+            print(f"Making dir {dir_path}")
+            os.mkdir(dir_path)
 
 def get_random_val(mode, val=None, std_dev=None, config=None, size=None):
     """Generates a uniformally distributed random variable, or a gaussian random variable centered at 0 by dafault.

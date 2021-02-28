@@ -3,7 +3,6 @@ import numpy as np
 from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
 from workers import evaluator
-import gym
 import matplotlib.pyplot as plt
 import datetime
 import sys, os
