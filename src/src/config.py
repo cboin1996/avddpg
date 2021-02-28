@@ -6,7 +6,7 @@ class Config():
     modelB = 'ModelB'
     model = modelB
     
-    res_dir = 'res'
+    res_dir = os.path.join('..', 'res')
     param_path = "conf.json"
 
     def __init__(self):
