@@ -60,7 +60,7 @@ class Config():
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
 
-        self.total_time_steps = 1000000
+        self.total_time_steps = 1000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
@@ -109,7 +109,7 @@ class Config():
 
         """Logging"""
         self.log_format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-        self.log_date_fmt = "%y-%m-%d %H:%M"
+        self.log_date_fmt = "%y-%m-%d %H:%M:%S"
 
 if __name__=="__main__":
     import util

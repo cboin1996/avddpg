@@ -9,6 +9,8 @@ import datetime
 import sys, os
 import logging
 
+log = logging.getLogger(__name__)
+
 def learn(config, rbuffer, actor_model, critic_model,
           target_actor, target_critic):
     """Trains and updates the actor critic network
@@ -48,19 +50,8 @@ def learn(config, rbuffer, actor_model, critic_model,
     return critic_grad, actor_grad
 
 
-def run():
+def run(base_dir):
     conf = config.Config()
-
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}_{conf.framework}")
-    os.mkdir(base_dir)
-
-    """ Setup logging to file """
-    file_handler = logging.FileHandler(os.path.join(base_dir, "out.log"))
-    formatter = logging.Formatter(conf.log_format)
-    file_handler.setFormatter(formatter)
-    log = logging.getLogger(__name__)
-    log.addHandler(file_handler)
 
     if conf.fed_enabled:
         fed_server = federated.Server('ddpg')

@@ -5,14 +5,17 @@ from types import SimpleNamespace
 import numpy as np
 import random
 import os, sys
+import logging
+
+log = logging.getLogger(__name__)
 def save_file(fpath, txt):
     with open(fpath, 'w') as f:
-        print(f"Saving {txt} to : {fpath}")
+        log.info(f"Saving {txt} to : {fpath}")
         f.write(txt)
 
 def config_writer(fpath, obj):
     with open(fpath, 'w') as f:
-        print(f"Saving configuration Config.py as json: outfile -> {fpath}.")
+        log.info(f"Saving configuration Config.py as json: outfile -> {fpath}.")
         json.dump(obj.__dict__, f)
 
 def config_loader(fpath):
@@ -28,13 +31,13 @@ def latexify(s):
 
 def print_dct(dct):
     for k, v in dct.items():
-        print(f"{latexify(k)} & {v} \\\\")
+        log.info(f"{latexify(k)} & {v} \\\\")
 
 def inititialize_dirs(config):
     for directory in config.dirs:
         dir_path = os.path.join(sys.path[0], directory)
         if not os.path.exists(dir_path):
-            print(f"Making dir {dir_path}")
+            log.info(f"Making dir {dir_path}")
             os.mkdir(dir_path)
 
 def get_random_val(mode, val=None, std_dev=None, config=None, size=None):
