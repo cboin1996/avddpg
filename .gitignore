@@ -7,9 +7,12 @@ requirements.txt
 venv
 
 
+.outputs
+
+
 __pycache__
 *.pyc
 .DS_STORE
 tensorflow/
-
+test.py
 res/

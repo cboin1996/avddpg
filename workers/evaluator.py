@@ -8,14 +8,15 @@ import math
 from src.config import Config
 import os
 import random
+import logging
 
 import warnings
 
 def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, const_bound=None, ramp_bound=None, root_path=None, seed=True):
-
+    log = logging.getLogger(__name__)
     if conf is None:
         conf_path = os.path.join(root_path, config.Config.param_path)
-        print(f"Loading configuration instance from {conf_path}")
+        log.info(f"Loading configuration instance from {conf_path}")
         conf = util.config_loader(conf_path)
     
     if path_timestamp is None:
@@ -89,7 +90,7 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
 
         if out == 'save':
             out_file = os.path.join(model_parent_dir, f"res_{typ}.png")
-            print(f"Generated {typ} simulation plot to -> {out_file}")
+            log.info(f"Generated {typ} simulation plot to -> {out_file}")
             plt.savefig(out_file)
         else:
             

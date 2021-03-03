@@ -6,6 +6,7 @@ from src import config, util
 import os 
 import random
 import sys
+import logging
 
 
 
@@ -17,7 +18,14 @@ def run(args):
     tf.random.set_seed(conf.random_seed)
     os.environ['PYTHONHASHSEED']=str(conf.random_seed)
     random.seed(conf.random_seed)
-    
+    # define root logger.. for outputting to console
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO,
+                    format=conf.log_format,
+                    datefmt=conf.log_date_fmt)
+    console = logging.StreamHandler(sys.stdout)
+    logger.addHandler(console)
+
     if args[1] == 'tr':
         trainer.run()
     elif args[1] == 'pid':

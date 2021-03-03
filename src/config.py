@@ -6,7 +6,7 @@ class Config():
     modelB = 'ModelB'
     model = modelB
     
-    res_dir = os.path.join('..', '.outputs')
+    res_dir = os.path.join('.outputs')
     param_path = "conf.json"
 
     def __init__(self):
@@ -16,8 +16,12 @@ class Config():
         self.model = self.model
         self.dcntrl = "decentralized"
         self.cntrl = "centralized"
-        self.framework = self.cntrl
-        
+        self.hfrl = "horizontal federated"
+        self.vfrl = "vertical federated"
+        self.nofrl = "normal"
+        self.fed_method = self.hfrl
+        self.framework = self.dcntrl
+        self.fed_enabled = (self.fed_method == self.hfrl or self.fed_method == self.vfrl) and (self.framework == self.dcntrl)
         self.res_dir = self.res_dir
         self.param_path = self.param_path
 
@@ -56,7 +60,7 @@ class Config():
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
 
-        self.total_time_steps = 1000
+        self.total_time_steps = 1000000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
@@ -103,7 +107,9 @@ class Config():
 
         self.dirs = [self.res_dir]
 
-
+        """Logging"""
+        self.log_format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+        self.log_date_fmt = "%y-%m-%d %H:%M"
 
 if __name__=="__main__":
     import util
