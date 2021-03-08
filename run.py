@@ -29,18 +29,19 @@ def get_cmdl_args(args: list, description: str):
     subparsers = parser.add_subparsers(dest="mode")
     add_tr = subparsers.add_parser('tr', help="run in training mode")
 
-    help_str = '\n'.join(["Enter the following paramaters to conduct a simulation using an existing model: ",
-                          "Path to experiment folder",
-                          "Bound for step input",
-                          "Bound for constant input",
-                          "Bound of ramp input"])
+    add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
+    add_esim.add_argument("config_path", type=str, help="path to configuration file")
 
-    add_eval = subparsers.add_parser('eval', help="run in evaluation/simulator mode. ")
-    add_eval.add_argument("--sim", nargs='*', help=help_str)
+    add_ecom = subparsers.add_parser('ecom', help="run in evaluation/simulator mode, with more custom arguments ")
+    add_ecom.add_argument("sim_path", type=str, help="path to trained model folder")
+    add_ecom.add_argument("step_bound", type=float, help="bound for random step input generation.")
+    add_ecom.add_argument("ramp_bound", type=float, help="bound for random ramp generation.")
+    add_ecom.add_argument("const_bound", type=float, help="bound for random constant generation.")
 
-    help_str = "\n".join(["Convert one or many configuration files to latex table"])
-    add_clat = subparsers.add_parser('clat', help="run a latex table generator for config files")
-    add_clat.add_argument("--lopt", nargs='*', help=help_str)
+    add_lsim = subparsers.add_parser('lsim', help="run a latex table generator for a single config file")
+    add_lsim.add_argument("config_path", type=str, help="path to trained configuration json file")
+
+    add_lmany = subparsers.add_parser('lmany', help="run a latex table generator for all config files")
 
     return parser.parse_args(args)
 
@@ -76,16 +77,14 @@ def run(args):
         trainer.run(base_dir)
     elif args.mode == 'pid':
         controller.run()
-    elif args.mode == 'eval':
+    elif args.mode == 'ecom':
         setup_global_logging_stream(conf)
-        if len(args.sim) >= 4: # run evaluator with cl args
-            evaluator.run(root_path=args.sim[0], step_bound=args.sim[0], const_bound=args.sim[0], ramp_bound=args.sim[0])
-        else: # run eval with that of conf.json
-            evaluator.run(root_path=args.sim[0], out='save', seed=False) # already seeded above
-    elif args.mode == 'clat':
-        if len(args.lopt) == 1:
-            util.print_dct(util.load_json(args.lopt[0]))
-        else:
+        evaluator.run(root_path=args.sim_path, step_bound=args.step_bound, const_bound=args.const_bound, ramp_bound=args.ramp_bound)
+    elif args.mode == 'esim': # run eval with that of conf.json
+            evaluator.run(root_path=args.sim_path, out='save', seed=False) # already seeded above
+    elif args.mode == 'lsim':
+        util.print_dct(util.load_json(args.config_path))
+    elif args.mpde == 'lmany':
             print("Making table of all configs.")
 
 
