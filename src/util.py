@@ -56,4 +56,6 @@ def get_random_val(mode, val=None, std_dev=None, config=None, size=None):
         return np.random.uniform(-1*val, val)
     elif mode == config.normal:
         return np.random.normal(0, std_dev, size=size)
+
+
     
