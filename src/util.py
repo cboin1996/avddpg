@@ -27,11 +27,11 @@ def load_json(fpath):
         return json.load(f)
 
 def latexify(s):
-    return s.replace('_', '\_').replace('%', '\%')
+    return str(s).replace('_', '\_').replace('%', '\%')
 
 def print_dct(dct):
     for k, v in dct.items():
-        log.info(f"{latexify(k)} & {v} \\\\")
+        print(f"{latexify(k)} & {latexify(v)} \\\\")
 
 def inititialize_dirs(config):
     for directory in config.dirs:

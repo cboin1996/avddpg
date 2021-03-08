@@ -26,20 +26,22 @@ def get_cmdl_args(args: list, description: str):
         return (list) : the list of parsed arguments
     """
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("mode",
-                        choices=["tr", "pid", "eval", "clat"],
-                        help="What mode should I run?")
+    subparsers = parser.add_subparsers(dest="mode")
+    add_tr = subparsers.add_parser('tr', help="run in training mode")
 
     help_str = '\n'.join(["Enter the following paramaters to conduct a simulation using an existing model: ",
                           "Path to experiment folder",
                           "Bound for step input",
                           "Bound for constant input",
                           "Bound of ramp input"])
-    
-    parser.add_argument("--sim", nargs='*', help=help_str)
+
+    add_eval = subparsers.add_parser('eval', help="run in evaluation/simulator mode. ")
+    add_eval.add_argument("--sim", nargs='*', help=help_str)
 
     help_str = "\n".join(["Convert one or many configuration files to latex table"])
-    parser.add_argument("--lopt", nargs='*', help=help_str)
+    add_clat = subparsers.add_parser('clat', help="run a latex table generator for config files")
+    add_clat.add_argument("--lopt", nargs='*', help=help_str)
+
     return parser.parse_args(args)
 
 def run(args):
@@ -81,8 +83,8 @@ def run(args):
         else: # run eval with that of conf.json
             evaluator.run(root_path=args.sim[0], out='save', seed=False) # already seeded above
     elif args.mode == 'clat':
-        if len(args.lopt) > 1:
-            util.print_dct(util.load_json(args.lm[1]))
+        if len(args.lopt) == 1:
+            util.print_dct(util.load_json(args.lopt[0]))
         else:
             print("Making table of all configs.")
 
