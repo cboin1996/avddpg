@@ -26,7 +26,8 @@ def run(args):
 
     if args[1] == 'tr':
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}_{conf.framework}")
+        
+        base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}_{conf.framework}_{conf.fed_method}")
         os.mkdir(base_dir)
 
         """ Setup logging to file and console """
@@ -40,7 +41,7 @@ def run(args):
         formatter = logging.Formatter(conf.log_format)
         console.setFormatter(formatter)
         logging.getLogger('').addHandler(console)
-        
+
         trainer.run(base_dir)
     elif args[1] == 'pid':
         controller.run()

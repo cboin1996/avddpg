@@ -91,14 +91,23 @@ def run(base_dir):
     
     for i in range(num_models):
         ou_objects.append(noise.OUActionNoise(mean=np.zeros(1), config=conf))
-        actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, hidd_mult=env.hidden_multiplier)
-        critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier)
+        actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, 
+                                hidd_mult=env.hidden_multiplier, layer1_size=conf.actor_layer1_size, 
+                                layer2_size=conf.actor_layer2_size)
+        critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier,
+                                 layer1_size=conf.critic_layer1_size, 
+                                layer2_size=conf.critic_layer2_size)
 
         actors.append(actor)
         critics.append(critic)
 
-        target_actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, hidd_mult=env.hidden_multiplier)
-        target_critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier)
+        target_actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, 
+                                        hidd_mult=env.hidden_multiplier,
+                                        layer1_size=conf.actor_layer1_size, 
+                                        layer2_size=conf.actor_layer2_size)
+        target_critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier,
+                                        layer1_size=conf.critic_layer1_size, 
+                                        layer2_size=conf.critic_layer2_size)
 
         # Making the weights equal initially
         target_actor.set_weights(actor.get_weights())

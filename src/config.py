@@ -19,7 +19,7 @@ class Config():
         self.hfrl = "horizontal federated"
         self.vfrl = "vertical federated"
         self.nofrl = "normal"
-        self.fed_method = self.hfrl
+        self.fed_method = self.nofrl
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.hfrl or self.fed_method == self.vfrl) and (self.framework == self.dcntrl)
         self.res_dir = self.res_dir
@@ -47,10 +47,10 @@ class Config():
         self.reset_max_ev = 1.5
         self.reset_max_a = 0.05 # max accel of a vehicle upon reset
 
-        self.action_high =4.5
-        self.action_low = -4.5
+        self.action_high =2.5
+        self.action_low = -2.5
 
-        self.re_scalar = 0.1 # reward scale
+        self.re_scalar = 0.001 # reward scale
         self.terminal_reward = 1000
 
         """Trainer"""
@@ -60,7 +60,7 @@ class Config():
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
 
-        self.total_time_steps = 1000
+        self.total_time_steps = 750000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
@@ -75,7 +75,7 @@ class Config():
         # Learning rate for actor-critic models
         self.critic_lr = 0.001
         self.actor_lr = 0.0001
-        self.std_dev = 0.02 # orhnstein gaussian noise standard dev
+        self.std_dev = 0.2 # orhnstein gaussian noise standard dev
         self.theta = 0.15 # orhstein theta
         self.ou_dt = 1e-2 # ornstein dt
         self.tau = 0.001 # target network update coeff
@@ -83,6 +83,13 @@ class Config():
         self.batch_size=64
         self.buffer_size=100000
         self.show_env=False
+
+        """Models"""
+        self.actor_layer1_size=400
+        self.actor_layer2_size=300
+
+        self.critic_layer1_size=400
+        self.critic_layer2_size=300
         """Directories"""
 
         self.actor_fname = 'actor%s.h5'
