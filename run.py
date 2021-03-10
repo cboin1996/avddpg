@@ -58,7 +58,7 @@ def run(args):
             # evaluator.run(out='save', root_path=args[2])
     elif args[1] == 'clat':
         util.print_dct(util.load_json(args[2]))
-
+        
 
 if __name__ == "__main__":
     run(sys.argv)

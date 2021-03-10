@@ -50,12 +50,12 @@ class Config():
         self.action_high =2.5
         self.action_low = -2.5
 
-        self.re_scalar = 0.001 # reward scale
+        self.re_scalar = 0.1 # reward scale
         self.terminal_reward = 1000
 
         """Trainer"""
         self.can_terminate = True
-        self.random_seed = 2
+        self.random_seed = 1
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
@@ -75,7 +75,7 @@ class Config():
         # Learning rate for actor-critic models
         self.critic_lr = 0.001
         self.actor_lr = 0.0001
-        self.std_dev = 0.2 # orhnstein gaussian noise standard dev
+        self.std_dev = 0.02 # orhnstein gaussian noise standard dev
         self.theta = 0.15 # orhstein theta
         self.ou_dt = 1e-2 # ornstein dt
         self.tau = 0.001 # target network update coeff
@@ -117,6 +117,9 @@ class Config():
         """Logging"""
         self.log_format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
         self.log_date_fmt = "%y-%m-%d %H:%M:%S"
+
+        """Reporting"""
+        self.pl_rew_for_simulation = 0
 
 if __name__=="__main__":
     import util

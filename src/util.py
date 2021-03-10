@@ -3,9 +3,11 @@ import json
 import tensorflow as tf
 from types import SimpleNamespace
 import numpy as np
+import pandas as pd
 import random
 import os, sys
 import logging
+import glob
 
 log = logging.getLogger(__name__)
 def save_file(fpath, txt):
@@ -56,4 +58,10 @@ def get_random_val(mode, val=None, std_dev=None, config=None, size=None):
         return np.random.uniform(-1*val, val)
     elif mode == config.normal:
         return np.random.normal(0, std_dev, size=size)
+
+def load_json_to_df(fpath):
+    return pd.read_json(fpath)
     
+def find_files(file_name):
+    paths = glob.glob(file_name)
+    return paths

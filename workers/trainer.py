@@ -224,5 +224,5 @@ def run(base_dir):
     plt.legend()
     plt.savefig(os.path.join(base_dir, conf.fig_path))
 
-    evaluator.run(conf=conf, actors=actors, path_timestamp=base_dir, out='save')
+    conf.pl_rew_for_simulation = evaluator.run(conf=conf, actors=actors, path_timestamp=base_dir, out='save') / conf.re_scalar
     util.config_writer(os.path.join(base_dir, conf.param_path), conf)

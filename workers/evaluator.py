@@ -95,3 +95,5 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
         else:
             
             plt.show()
+    
+    return pl_rew
