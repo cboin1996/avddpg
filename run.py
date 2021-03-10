@@ -8,11 +8,46 @@ import random
 import sys
 import logging
 import datetime
+import argparse
 
 logger = logging.getLogger(__name__)
 
+def setup_global_logging_stream(conf):
+    console = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(conf.log_format)
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
+
+def get_cmdl_args(args: list, description: str):
+    """Simple command line parser
+
+    Args:
+        args (list): the input arguments from command prompt
+        return (list) : the list of parsed arguments
+    """
+    parser = argparse.ArgumentParser(description=description)
+    subparsers = parser.add_subparsers(dest="mode")
+    add_tr = subparsers.add_parser('tr', help="run in training mode")
+
+    add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
+    add_esim.add_argument("config_path", type=str, help="path to configuration file")
+
+    add_ecom = subparsers.add_parser('ecom', help="run in evaluation/simulator mode, with more custom arguments ")
+    add_ecom.add_argument("sim_path", type=str, help="path to trained model folder")
+    add_ecom.add_argument("step_bound", type=float, help="bound for random step input generation.")
+    add_ecom.add_argument("ramp_bound", type=float, help="bound for random ramp generation.")
+    add_ecom.add_argument("const_bound", type=float, help="bound for random constant generation.")
+
+    add_lsim = subparsers.add_parser('lsim', help="run a latex table generator for a single config file")
+    add_lsim.add_argument("config_path", type=str, help="path to trained configuration json file")
+
+    add_lmany = subparsers.add_parser('lmany', help="run a latex table generator for all config files")
+
+    return parser.parse_args(args)
+
 def run(args):
     physical_devices = tf.config.list_physical_devices('GPU') 
+    args = get_cmdl_args(args[1:], "Autonomous Vehicle Platoon with DDPG.")
     if len(physical_devices) > 0:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
@@ -24,7 +59,7 @@ def run(args):
     os.environ['PYTHONHASHSEED']=str(conf.random_seed)
     random.seed(conf.random_seed)
 
-    if args[1] == 'tr':
+    if args.mode == 'tr':
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         
         base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}_{conf.framework}_{conf.fed_method}")
@@ -37,28 +72,21 @@ def run(args):
                             filename=os.path.join(base_dir, "out.log"),
                             filemode='w')
 
-        console = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(conf.log_format)
-        console.setFormatter(formatter)
-        logging.getLogger('').addHandler(console)
+        setup_global_logging_stream(conf)
 
         trainer.run(base_dir)
-    elif args[1] == 'pid':
+    elif args.mode == 'pid':
         controller.run()
-    elif args[1] == 'eval':
-        console = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(conf.log_format)
-        console.setFormatter(formatter)
-        logging.getLogger('').addHandler(console)
+    elif args.mode == 'ecom':
+        setup_global_logging_stream(conf)
+        evaluator.run(root_path=args.sim_path, step_bound=args.step_bound, const_bound=args.const_bound, ramp_bound=args.ramp_bound)
+    elif args.mode == 'esim': # run eval with that of conf.json
+            evaluator.run(root_path=args.sim_path, out='save', seed=False) # already seeded above
+    elif args.mode == 'lsim':
+        util.print_dct(util.load_json(args.config_path))
+    elif args.mpde == 'lmany':
+            print("Making table of all configs.")
 
-        if len(args) >= 4: # run evaluator with cl args
-            evaluator.run(root_path=args[2], step_bound=args[3], const_bound=args[4], ramp_bound=args[5])
-        else: # run eval with that of conf.json
-            evaluator.run(root_path=args[2], out='save', seed=False) # already seeded above
-            # evaluator.run(out='save', root_path=args[2])
-    elif args[1] == 'clat':
-        util.print_dct(util.load_json(args[2]))
-        
 
 if __name__ == "__main__":
     run(sys.argv)
