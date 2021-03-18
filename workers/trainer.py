@@ -50,9 +50,9 @@ def learn(config, rbuffer, actor_model, critic_model,
     return critic_grad, actor_grad
 
 
-def run(base_dir):
+def run(base_dir, timestamp):
     conf = config.Config()
-
+    conf.timestamp = str(timestamp)
     if conf.fed_enabled:
         fed_server = federated.Server('ddpg')
 

@@ -15,6 +15,12 @@ def save_file(fpath, txt):
         log.info(f"Saving {txt} to : {fpath}")
         f.write(txt)
 
+def write_csv_from_df(df, fp):
+    log.info("writing..")
+    log.info(df.head())
+    log.info(f"To - > {fp}")
+    df.to_csv(fp)
+
 def config_writer(fpath, obj):
     with open(fpath, 'w') as f:
         log.info(f"Saving configuration Config.py as json: outfile -> {fpath}.")
@@ -59,9 +65,17 @@ def get_random_val(mode, val=None, std_dev=None, config=None, size=None):
     elif mode == config.normal:
         return np.random.normal(0, std_dev, size=size)
 
-def load_json_to_df(fpath):
-    return pd.read_json(fpath)
+def load_json_to_df(df):
+    return pd.read_json(df)
     
 def find_files(file_name):
     paths = glob.glob(file_name)
     return paths
+
+def remove_keys_from_dict(dct, keys):
+    for key in keys:
+        try:
+            del dct[key]
+        except KeyError:
+            pass 
+    return dct

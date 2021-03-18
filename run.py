@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from agent import model, ddpgagent
 from workers import trainer, controller, evaluator
-from src import config, util
+from src import config, util, reporter
 import os 
 import random
 import sys
@@ -59,9 +59,10 @@ def run(args):
     os.environ['PYTHONHASHSEED']=str(conf.random_seed)
     random.seed(conf.random_seed)
 
+    root_dir = sys.path[0]
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+
     if args.mode == 'tr':
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        
         base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}_{conf.framework}_{conf.fed_method}")
         os.mkdir(base_dir)
 
@@ -74,18 +75,24 @@ def run(args):
 
         setup_global_logging_stream(conf)
 
-        trainer.run(base_dir)
+        trainer.run(base_dir, timestamp)
     elif args.mode == 'pid':
         controller.run()
     elif args.mode == 'ecom':
         setup_global_logging_stream(conf)
         evaluator.run(root_path=args.sim_path, step_bound=args.step_bound, const_bound=args.const_bound, ramp_bound=args.ramp_bound)
     elif args.mode == 'esim': # run eval with that of conf.json
-            evaluator.run(root_path=args.sim_path, out='save', seed=False) # already seeded above
+        setup_global_logging_stream(conf)
+        evaluator.run(root_path=args.config_path, out='save', seed=False) # already seeded above
     elif args.mode == 'lsim':
+        setup_global_logging_stream(conf)
         util.print_dct(util.load_json(args.config_path))
-    elif args.mpde == 'lmany':
-            print("Making table of all configs.")
+    elif args.mode == 'lmany':
+        setup_global_logging_stream(conf)
+        report_root = os.path.join(root_dir, conf.report_dir)
+        res_dir = os.path.join(root_dir, conf.res_dir)
+        list_of_config_paths = util.find_files(os.path.join(res_dir, '*', conf.param_path))
+        reporter.aggregate_json_to_df(report_root, list_of_config_paths, timestamp, drop_cols=conf.drop_keys_in_report, index_col=conf.index_col)
 
 
 if __name__ == "__main__":

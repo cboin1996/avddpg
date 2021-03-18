@@ -23,6 +23,7 @@ class Config():
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.hfrl or self.fed_method == self.vfrl) and (self.framework == self.dcntrl)
         self.res_dir = self.res_dir
+        self.report_dir = "reports"
         self.param_path = self.param_path
 
         """Environment"""
@@ -40,7 +41,7 @@ class Config():
         self.reward_ev_coeff = 1
         self.reward_u_coeff = 0.10
 
-        self.max_ep = 10
+        self.max_ep = 25
         self.max_ev = 10
         
         self.reset_ep_max = 1.5
@@ -55,12 +56,12 @@ class Config():
 
         """Trainer"""
         self.can_terminate = True
-        self.random_seed = 1
+        self.random_seed = 5
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
 
-        self.total_time_steps = 750000
+        self.total_time_steps = 1000000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
@@ -112,7 +113,7 @@ class Config():
         self.stepfig_name = "step"
         self.rampfig_name = "ramp"
 
-        self.dirs = [self.res_dir]
+        self.dirs = [self.res_dir, self.report_dir]
 
         """Logging"""
         self.log_format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
@@ -120,6 +121,61 @@ class Config():
 
         """Reporting"""
         self.pl_rew_for_simulation = 0
+        self.index_col = "timestamp"
+        self.timestamp = None
+        self.drop_keys_in_report = ["modelA", "modelB", "dcntrl", "cntrl", "hfrl", "vfrl", "nofrl", "res_dir", "report_dir", "param_path", "euler",
+                                    "exact", "normal", "uniform", "show_env", "actor_fname", "actor_picname", "actor_weights", "critic_fname", "critic_picname",
+                                    "critic_weights", "t_actor_fname", "t_actor_picname", "t_actor_weights", "t_critic_fname", "t_critic_picname", 
+                                    "t_critic_weights", "fig_path", "zerofig_name", "guasfig_name", "stepfig_name", "rampfig_name", "dirs",
+                                    "log_format", "log_date_fmt", "drop_keys_in_report", "index_col"]
+
+        self.param_descs = {"timestamp" : "The time at which the experiment was run",
+                            "model" : "Whether a 3 (ModelA) of 4 (ModelB) state model",
+                            "fed_method" : "Type of federated learning used",
+                            "framework" : "Decentralized or centralized",
+                            "fed_enabled" : "Whether FRL is enabled",
+                            "pl_size" : "The size of the platoon",
+                            "pl_leader_reset_a" : "The mean value of the platoon leader acceleration upon environment reset",
+                            "reset_max_u" : "The mean value of the platoon leader control input upon environment reset",
+                            "pl_leader_tau" : "Vehicle dynamics coefficient",
+                            "method" : "Exact or euler discretization",
+                            "timegap" : "Constant time headway CACC time gap",
+                            "dyn_coeff" : "Dynamic coefficients for the following vehicles",
+                            "reward_ev_coeff" : "Coefficient of velocity difference in reward equation",
+                            "reward_u_coeff" : "Coefficient of control input in reward equation",
+                            "max_ep" : "Maximum position error in followers before episode termination",
+                            "max_ev" : "Maximum position error in followers before episode termination",
+                            "reset_ep_max" : "Maximum position error in followers upon environment reset",
+                            "reset_max_ev" : "Maximum velocity error in followers upon environment reset",
+                            "reset_max_a" : "Maximum acceleration upon environment reset",
+                            "action_high", : "Upper bound on action space for the environment",
+                            "action_low" : "Lower bound on action space for the environment",
+                            "re_scalar" : "Reward scaling coefficient",
+                            "terminal_reward" : "Reward assigned upon early termination",
+                            "can_terminate" : "Whether the environment is allowed to terminate early",
+                            "random_seed" : "Seed for the experiment across all python libraries",
+                            "rand_gen" : "Either uniform or normal for random number generation",
+                            "total_time_steps" : "The number of timesteps to train on",
+                            "sample_rate" : "The sample rate of the system",
+                            "episode_sim_time" : "The time in seconds to run simulations for",
+                            "steps_per_episode" : "The number of steps per episode",
+                            "number_of_episodes" : "The total number of episodes for training",
+                            "gamma" : "The discounted reward coefficient",
+                            "centrl_hidd_mult" : "Multiplier for number of nodes across hidden layers",
+                            "critic_lr" : "Learning rate for critic network",
+                            "actor_lr" : "Learning rate for actor network",
+                            "std_dev" : "Standard deviation used in OU noise",
+                            "theta" : "Theta value for OU noise",
+                            "ou_dt" : "Sample rate for OU noise",
+                            "tau" : "Target network update parameter",
+                            "batch_size" : "Batch size for sampling replay buffer",
+                            "buffer_size" : "Size of the replay buffer",
+                            "pl_rew_for_simulation" : "Stores the platoon's reward after the final simulation",
+                            "actor_layer1_size" : "Number of nodes in actor's first hidden layer",
+                            "actor_layer2_size" : "Number of nodes in actor's second hidden layer",
+                            "critic_layer1_size" : "Number of nodes in critic's first hidden layer",
+                            "critic_layer2_size" : "Number of nodes in critics's second hidden layer"}
+}
 
 if __name__=="__main__":
     import util
