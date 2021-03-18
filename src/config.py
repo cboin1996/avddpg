@@ -61,7 +61,7 @@ class Config():
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
 
-        self.total_time_steps = 1000000
+        self.total_time_steps = 1000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
@@ -127,7 +127,7 @@ class Config():
                                     "exact", "normal", "uniform", "show_env", "actor_fname", "actor_picname", "actor_weights", "critic_fname", "critic_picname",
                                     "critic_weights", "t_actor_fname", "t_actor_picname", "t_actor_weights", "t_critic_fname", "t_critic_picname", 
                                     "t_critic_weights", "fig_path", "zerofig_name", "guasfig_name", "stepfig_name", "rampfig_name", "dirs",
-                                    "log_format", "log_date_fmt", "drop_keys_in_report", "index_col"]
+                                    "log_format", "log_date_fmt", "drop_keys_in_report", "index_col", "param_descs"]
 
         self.param_descs = {"timestamp" : "The time at which the experiment was run",
                             "model" : "Whether a 3 (ModelA) of 4 (ModelB) state model",
@@ -148,7 +148,7 @@ class Config():
                             "reset_ep_max" : "Maximum position error in followers upon environment reset",
                             "reset_max_ev" : "Maximum velocity error in followers upon environment reset",
                             "reset_max_a" : "Maximum acceleration upon environment reset",
-                            "action_high", : "Upper bound on action space for the environment",
+                            "action_high" : "Upper bound on action space for the environment",
                             "action_low" : "Lower bound on action space for the environment",
                             "re_scalar" : "Reward scaling coefficient",
                             "terminal_reward" : "Reward assigned upon early termination",
@@ -175,7 +175,6 @@ class Config():
                             "actor_layer2_size" : "Number of nodes in actor's second hidden layer",
                             "critic_layer1_size" : "Number of nodes in critic's first hidden layer",
                             "critic_layer2_size" : "Number of nodes in critics's second hidden layer"}
-}
 
 if __name__=="__main__":
     import util

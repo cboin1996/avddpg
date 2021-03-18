@@ -91,9 +91,12 @@ def run(args):
         setup_global_logging_stream(conf)
         report_root = os.path.join(root_dir, conf.report_dir)
         res_dir = os.path.join(root_dir, conf.res_dir)
-        list_of_config_paths = util.find_files(os.path.join(res_dir, '*', conf.param_path))
-        reporter.aggregate_json_to_df(report_root, list_of_config_paths, timestamp, drop_cols=conf.drop_keys_in_report, index_col=conf.index_col)
-
+        list_of_exp_paths = util.find_files(os.path.join(res_dir, '*'))
+        fig_names = [conf.actor_picname % (1), conf.critic_picname % (1), conf.fig_path, "res_guassian.png"]
+        
+        reporter.generate_latex_report(report_root, list_of_exp_paths, conf.param_path, conf.index_col,
+                            conf.drop_keys_in_report, timestamp, fig_names, 0.5, conf.param_descs)
+        
 
 if __name__ == "__main__":
     run(sys.argv)
