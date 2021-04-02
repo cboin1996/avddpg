@@ -92,10 +92,21 @@ def run(args):
         report_root = os.path.join(root_dir, conf.report_dir)
         res_dir = os.path.join(root_dir, conf.res_dir)
         list_of_exp_paths = util.find_files(os.path.join(res_dir, '*'))
-        fig_names = [conf.actor_picname % (1), conf.critic_picname % (1), conf.fig_path, "res_guassian.png"]
-        
+        fig_params = [{"name" : conf.actor_picname % (1),
+                    "width" : 0.5,
+                    "caption" : "Actor network model for experiment %s"},
+                    {"name" : conf.critic_picname % (1),
+                    "width" : 0.6,
+                    "caption" : "Critic network model for experiment %s"},
+                    {"name" : conf.fig_path,
+                    "width" : 0.6,
+                    "caption" : "Reward curve for experiment %s"},
+                    {"name" : "res_guassian.png",
+                    "width" : 0.4,
+                    "caption" : "Platoon simulation for experiment %s"}
+        ]
         reporter.generate_latex_report(report_root, list_of_exp_paths, conf.param_path, conf.index_col,
-                            conf.drop_keys_in_report, timestamp, fig_names, 0.5, conf.param_descs)
+                            conf.drop_keys_in_report, timestamp, fig_params, 0.5, conf.param_descs)
         
 
 if __name__ == "__main__":

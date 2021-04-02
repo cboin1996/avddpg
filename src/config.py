@@ -19,7 +19,7 @@ class Config():
         self.hfrl = "horizontal federated"
         self.vfrl = "vertical federated"
         self.nofrl = "normal"
-        self.fed_method = self.nofrl
+        self.fed_method = self.hfrl
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.hfrl or self.fed_method == self.vfrl) and (self.framework == self.dcntrl)
         self.res_dir = self.res_dir
@@ -27,7 +27,8 @@ class Config():
         self.param_path = self.param_path
 
         """Environment"""
-        self.pl_size = 2 # the size of the platoon.
+        self.pl_num = 2 # the number of platoons
+        self.pl_size = 2 # the number of following vehicles in the platoon.
         self.pl_leader_reset_a = 0 # max initial acceleration of the platoon leader (used in the calculation for \dot{a_{i-1}}) (bound for uniform, std_dev for normal)
         self.reset_max_u = 0.100 # max initial control input of the platoon leader (used in the calculation for \dot{a_{i-1}}, (bound for uniform, std_dev for normal)
 
@@ -41,7 +42,7 @@ class Config():
         self.reward_ev_coeff = 1
         self.reward_u_coeff = 0.10
 
-        self.max_ep = 25
+        self.max_ep = 20
         self.max_ev = 10
         
         self.reset_ep_max = 1.5
@@ -56,12 +57,12 @@ class Config():
 
         """Trainer"""
         self.can_terminate = True
-        self.random_seed = 5
+        self.random_seed = 3
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
 
-        self.total_time_steps = 1000
+        self.total_time_steps = 750000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
@@ -74,8 +75,8 @@ class Config():
         self.centrl_hidd_mult = 1.2
         
         # Learning rate for actor-critic models
-        self.critic_lr = 0.001
-        self.actor_lr = 0.0001
+        self.critic_lr = 0.0005
+        self.actor_lr = 0.00005
         self.std_dev = 0.02 # orhnstein gaussian noise standard dev
         self.theta = 0.15 # orhstein theta
         self.ou_dt = 1e-2 # ornstein dt
@@ -86,11 +87,11 @@ class Config():
         self.show_env=False
 
         """Models"""
-        self.actor_layer1_size=400
-        self.actor_layer2_size=300
+        self.actor_layer1_size=256
+        self.actor_layer2_size=128
 
-        self.critic_layer1_size=400
-        self.critic_layer2_size=300
+        self.critic_layer1_size=256
+        self.critic_layer2_size=128
         """Directories"""
 
         self.actor_fname = 'actor%s.h5'

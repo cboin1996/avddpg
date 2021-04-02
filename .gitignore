@@ -16,3 +16,4 @@ __pycache__
 tensorflow/
 test.py
 res/
+reports/

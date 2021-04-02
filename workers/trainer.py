@@ -222,6 +222,7 @@ def run(base_dir, timestamp):
     plt.xlabel("Episode")
     plt.ylabel("Average Epsiodic Reward")
     plt.legend()
+    plt.tight_layout()
     plt.savefig(os.path.join(base_dir, conf.fig_path))
 
     conf.pl_rew_for_simulation = evaluator.run(conf=conf, actors=actors, path_timestamp=base_dir, out='save') / conf.re_scalar
