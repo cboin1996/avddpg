@@ -2,13 +2,18 @@
 # Vscode #
 .vscode
 .ropeproject
+requirements.txt
 # venv
 venv
+
+
+.outputs
 
 
 __pycache__
 *.pyc
 .DS_STORE
 tensorflow/
-
+test.py
 res/
+reports/

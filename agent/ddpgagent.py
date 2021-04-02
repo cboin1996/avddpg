@@ -7,7 +7,6 @@ def policy(actor_state, noise_object=None, lbound=None, hbound=None):
     """gets the policy from the model
 
     Args:
-        state ([type]): the state
         noise_object ([type]): the noise from OUA process
         actor_state ([type]): the actor models state
         lbound ([type]): low bound for the action
@@ -23,7 +22,6 @@ def policy(actor_state, noise_object=None, lbound=None, hbound=None):
         sampled_actions = sampled_actions.numpy() + noise
     else:
         sampled_actions = sampled_actions.numpy()
-
 
     # We make sure action is within bounds
     legal_action = np.clip(sampled_actions, lbound, hbound)

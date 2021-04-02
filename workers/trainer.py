@@ -3,10 +3,13 @@ import numpy as np
 from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
 from workers import evaluator
-import gym
+from server import federated
 import matplotlib.pyplot as plt
 import datetime
 import sys, os
+import logging
+
+log = logging.getLogger(__name__)
 
 def learn(config, rbuffer, actor_model, critic_model,
           target_actor, target_critic):
@@ -43,28 +46,32 @@ def learn(config, rbuffer, actor_model, critic_model,
         actor_loss = -tf.math.reduce_mean(critic_value)
 
     actor_grad = tape.gradient(actor_loss, actor_model.trainable_variables)
+
     return critic_grad, actor_grad
 
 
-def run():
+def run(base_dir, timestamp):
     conf = config.Config()
+    conf.timestamp = str(timestamp)
+    if conf.fed_enabled:
+        fed_server = federated.Server('ddpg')
 
     env = environment.Platoon(conf.pl_size, conf)
 
-    print(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
+    log.info(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
     num_states = env.num_states
     num_actions = env.num_actions
     num_models = env.num_models
 
-    print(f"Number of models : {num_models}")
-    print("Size of Model input ->  {}".format(num_states))
-    print("Size of Model output ->  {}".format(num_actions))
+    log.info(f"Number of models : {num_models}")
+    log.info("Size of Model input ->  {}".format(num_states))
+    log.info("Size of Model output ->  {}".format(num_actions))
 
     high_bound = conf.action_high
     low_bound  = conf.action_low
 
-    print("Max Value of Action ->  {}".format(high_bound))
-    print("Min Value of Action ->  {}".format(low_bound))
+    log.info("Max Value of Action ->  {}".format(high_bound))
+    log.info("Min Value of Action ->  {}".format(low_bound))
 
     ou_objects = []
     actors = []
@@ -76,17 +83,31 @@ def run():
     ep_reward_lists = []
     avg_reward_lists = []
     rbuffers = []
+
+    actor_grad_list = []
+    critic_grad_list = []
+
+    rbuffers_filled = []
     
     for i in range(num_models):
         ou_objects.append(noise.OUActionNoise(mean=np.zeros(1), config=conf))
-        actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, hidd_mult=env.hidden_multiplier)
-        critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier)
+        actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, 
+                                hidd_mult=env.hidden_multiplier, layer1_size=conf.actor_layer1_size, 
+                                layer2_size=conf.actor_layer2_size)
+        critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier,
+                                 layer1_size=conf.critic_layer1_size, 
+                                layer2_size=conf.critic_layer2_size)
 
         actors.append(actor)
         critics.append(critic)
 
-        target_actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, hidd_mult=env.hidden_multiplier)
-        target_critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier)
+        target_actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, 
+                                        hidd_mult=env.hidden_multiplier,
+                                        layer1_size=conf.actor_layer1_size, 
+                                        layer2_size=conf.actor_layer2_size)
+        target_critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier,
+                                        layer1_size=conf.critic_layer1_size, 
+                                        layer2_size=conf.critic_layer2_size)
 
         # Making the weights equal initially
         target_actor.set_weights(actor.get_weights())
@@ -106,9 +127,12 @@ def run():
                                             num_actions,
                                             conf.pl_size,
                                             ))
+        
+        actor_grad_list.append([])
+        critic_grad_list.append([])
+        rbuffers_filled.append(False)
 
     actions = np.zeros((num_models, num_actions)) 
-
     for ep in range(conf.number_of_episodes):
         prev_states = env.reset()
         episodic_reward_counters = np.array([0]*num_models,  dtype=np.float32)
@@ -134,10 +158,14 @@ def run():
 
                 episodic_reward_counters[m] += rewards[m]
                 if rbuffers[m].buffer_counter > conf.batch_size: # first fill the buffer to the batch size   
+                    rbuffers_filled[m] = True
                     # train and update the actor critics
                     critic_grad, actor_grad = learn(conf, rbuffers[m], actors[m], critics[m], 
                                                     target_actors[m], target_critics[m])
-                    
+                    # append gradients for avg'ing if federated enabled
+                    actor_grad_list[m] = actor_grad
+                    critic_grad_list[m] = critic_grad                    
+
                     critic_optimizers[m].apply_gradients(zip(critic_grad, critics[m].trainable_variables))
                     actor_optimizers[m].apply_gradients(zip(actor_grad, actors[m].trainable_variables))
 
@@ -145,24 +173,35 @@ def run():
                     tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critics[m].weights, critics[m].weights, target_actors[m].weights, actors[m].weights)
                     target_actors[m].set_weights(ta_new_weights)
                     target_critics[m].set_weights(tc_new_weights)
+            
+            # apply FL aggregation method, and reapply gradients to models
+            if conf.fed_enabled:
+                if False not in rbuffers_filled: # ensure rbuffers have filled                    
+                    actor_avg_grads = fed_server.get_avg_grads(actor_grad_list)
+                    critic_avg_grads = fed_server.get_avg_grads(critic_grad_list)
+                    for m in range(num_models):
+                        critic_optimizers[m].apply_gradients(zip(critic_avg_grads, critics[m].trainable_variables))
+                        actor_optimizers[m].apply_gradients(zip(actor_avg_grads, actors[m].trainable_variables))
+
+                        # update the target networks
+                        tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critics[m].weights, critics[m].weights, target_actors[m].weights, actors[m].weights)
+                        target_actors[m].set_weights(ta_new_weights)
+                        target_critics[m].set_weights(tc_new_weights)
                 
             if terminal:
                 break
 
             prev_states = states
+
         print("")
         for m in range(num_models):
             ep_reward_lists[m].append(episodic_reward_counters[m])
 
             avg_reward = np.mean(ep_reward_lists[m][-40:])
-            print("Model {} : Episode * {} of {} * Avg Reward is ==> {}".format(m+1, ep, conf.number_of_episodes, avg_reward))
+            log.info("Model {} : Episode * {} of {} * Avg Reward is ==> {}".format(m+1, ep, conf.number_of_episodes, avg_reward))
             avg_reward_lists[m].append(avg_reward)
         print("")
 
-
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}_{conf.framework}")
-    os.mkdir(base_dir)
     plt.figure()
     for m in range(num_models):
         tag = f"{m+1}"
@@ -179,10 +218,12 @@ def run():
         tf.keras.utils.plot_model(target_critics[m], to_file=os.path.join(base_dir, conf.t_critic_picname % (tag)), show_shapes=True)
  
         plt.plot(avg_reward_lists[m], label=f"Model {tag}")
+
     plt.xlabel("Episode")
     plt.ylabel("Average Epsiodic Reward")
     plt.legend()
+    plt.tight_layout()
     plt.savefig(os.path.join(base_dir, conf.fig_path))
 
-    evaluator.run(conf=conf, actors=actors, path_timestamp=base_dir, out='save')
+    conf.pl_rew_for_simulation = evaluator.run(conf=conf, actors=actors, path_timestamp=base_dir, out='save') / conf.re_scalar
     util.config_writer(os.path.join(base_dir, conf.param_path), conf)

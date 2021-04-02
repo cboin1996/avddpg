@@ -2,21 +2,21 @@ import tensorflow as tf
 import numpy as np
 from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
-import gym
 import matplotlib.pyplot as plt
 import h5py
 import math
 from src.config import Config
 import os
 import random
+import logging
 
 import warnings
 
 def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, const_bound=None, ramp_bound=None, root_path=None, seed=True):
-
+    log = logging.getLogger(__name__)
     if conf is None:
         conf_path = os.path.join(root_path, config.Config.param_path)
-        print(f"Loading configuration instance from {conf_path}")
+        log.info(f"Loading configuration instance from {conf_path}")
         conf = util.config_loader(conf_path)
     
     if path_timestamp is None:
@@ -36,7 +36,7 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
         actors = []
         for m in range(num_models):
             tag = f"{m+1}"
-            actors.append(tf.keras.models.load_model(os.path.join(root_path, conf.actor_fname % (tag))))
+            actors.append(tf.keras.models.load_model(os.path.join(root_path, conf.actor_fname % (tag)), compile=False))
 
     input_opts = {conf.guasfig_name : [util.get_random_val(conf.rand_gen, conf.reset_max_u, std_dev=conf.reset_max_u, config=conf)
                                         for _ in range(conf.steps_per_episode)]}
@@ -90,8 +90,10 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
 
         if out == 'save':
             out_file = os.path.join(model_parent_dir, f"res_{typ}.png")
-            print(f"Generated {typ} simulation plot to -> {out_file}")
+            log.info(f"Generated {typ} simulation plot to -> {out_file}")
             plt.savefig(out_file)
         else:
             
             plt.show()
+    
+    return pl_rew

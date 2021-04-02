@@ -1,10 +1,10 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(name='avddpg',
-      version='0.1',
+      version='0.3',
       description='DDPG implentation using tensorflow',
       author='Christian Boin',
-      author_email='gward@python.net',
-      url='https://www.python.org/sigs/distutils-sig/',
-      packages=[],
+      author_email='',
+      url='',
+      packages=[]
      )
