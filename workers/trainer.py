@@ -249,9 +249,9 @@ def run(base_dir, timestamp):
                         break
                 
                 if all_rbuffers_are_filled:
+                    actor_avg_grads = fed_server.get_avg_grads(all_actor_grad_list)
+                    critic_avg_grads = fed_server.get_avg_grads(all_critic_grad_list)
                     for p in range(num_platoons):
-                        actor_avg_grads = fed_server.get_avg_grads(all_actor_grad_list)
-                        critic_avg_grads = fed_server.get_avg_grads(all_critic_grad_list)
                         for m in range(num_models):
                             critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads, all_critics[p][m].trainable_variables))
                             actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads, all_actors[p][m].trainable_variables))
