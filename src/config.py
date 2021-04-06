@@ -57,7 +57,7 @@ class Config():
 
         """Trainer"""
         self.can_terminate = True
-        self.random_seed = 3
+        self.random_seed = 1
         self.evaluation_seed = 6
 
         self.normal = 'normal' 
@@ -132,7 +132,7 @@ class Config():
                                     "exact", "normal", "uniform", "show_env", "actor_fname", "actor_picname", "actor_weights", "critic_fname", "critic_picname",
                                     "critic_weights", "t_actor_fname", "t_actor_picname", "t_actor_weights", "t_critic_fname", "t_critic_picname", 
                                     "t_critic_weights", "fig_path", "zerofig_name", "guasfig_name", "stepfig_name", "rampfig_name", "dirs",
-                                    "log_format", "log_date_fmt", "drop_keys_in_report", "index_col", "param_descs", "img_tag", "pl_rews_for_simulations"]
+                                    "log_format", "log_date_fmt", "drop_keys_in_report", "index_col", "param_descs", "img_tag", "pl_rews_for_simulations", "pl_tag"]
 
         self.param_descs = {"timestamp" : "The time at which the experiment was run",
                             "model" : "Whether a 3 (ModelA) of 4 (ModelB) state model",
