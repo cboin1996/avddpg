@@ -25,10 +25,13 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
         model_parent_dir = path_timestamp
     
     if seed:
+        evaluation_seed = conf.evaluation_seed
         np.random.seed(conf.evaluation_seed)
         tf.random.set_seed(conf.evaluation_seed)
         os.environ['PYTHONHASHSEED']=str(conf.evaluation_seed)
         random.seed(conf.evaluation_seed)
+    else:
+        evaluation_seed = None
 
     env = environment.Platoon(conf.pl_size, conf, rand_states=False) # do not use random states here, for consistency across evaluation sessions
     num_models = env.num_models
@@ -81,11 +84,11 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
         axs[num_rows-1].legend()
         pl_rew = round(np.average(episodic_reward_counters), 3)
 
-        pl_title = f"Platoon {pl_idx} {conf.model} {typ} input response\n with cumulative platoon reward of %.3f\n and random seed %s" % (pl_rew, conf.evaluation_seed)
+        pl_title = f"Platoon {pl_idx} {conf.model} {typ} input response\n with cumulative platoon reward of %.3f\n and random seed %s" % (pl_rew, evaluation_seed)
         if len(episodic_reward_counters) == 1:
             plt.suptitle(pl_title)
         else:
-            plt.suptitle(pl_title + f"and cumulative vehicle\nrewards {np.round(episodic_reward_counters, 2)}")
+            plt.suptitle(pl_title + f" and cumulative vehicle\nrewards {np.round(episodic_reward_counters, 2)}")
         plt.tight_layout()
 
         if out == 'save':
