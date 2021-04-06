@@ -83,7 +83,8 @@ def run(args):
         evaluator.run(root_path=args.sim_path, step_bound=args.step_bound, const_bound=args.const_bound, ramp_bound=args.ramp_bound)
     elif args.mode == 'esim': # run eval with that of conf.json
         setup_global_logging_stream(conf)
-        evaluator.run(root_path=args.config_path, out='save', seed=False) # already seeded above
+        for p in range(conf.num_platoons):
+            evaluator.run(root_path=args.config_path, out='save', seed=False, pl_idx=p+1) # already seeded above
     elif args.mode == 'lsim':
         setup_global_logging_stream(conf)
         util.print_dct(util.load_json(args.config_path))
@@ -92,19 +93,23 @@ def run(args):
         report_root = os.path.join(root_dir, conf.report_dir)
         res_dir = os.path.join(root_dir, conf.res_dir)
         list_of_exp_paths = util.find_files(os.path.join(res_dir, '*'))
-        fig_params = [{"name" : conf.actor_picname % (1),
+        fig_params = [{"name" : conf.actor_picname % (1, 1),
                     "width" : 0.5,
                     "caption" : "Actor network model for experiment %s"},
-                    {"name" : conf.critic_picname % (1),
+                    {"name" : conf.critic_picname % (1, 1),
                     "width" : 0.6,
-                    "caption" : "Critic network model for experiment %s"},
-                    {"name" : conf.fig_path,
-                    "width" : 0.6,
-                    "caption" : "Reward curve for experiment %s"},
-                    {"name" : "res_guassian.png",
-                    "width" : 0.4,
-                    "caption" : "Platoon simulation for experiment %s"}
+                    "caption" : "Critic network model for experiment %s"}
         ]
+
+        for p in range(conf.num_platoons):
+            for m in range(conf.pl_size):
+                fig_params.append( {"name" : conf.fig_path % (p+1),
+                        "width" : 0.6,
+                        "caption" : f"Platoon {p+1} reward curve for experiment %s"}
+                        )
+                fig_params.append({"name" : f"res_guassian{conf.pl_tag}.png" % (p+1),
+                        "width" : 0.4,
+                        "caption" : f"Platoon {p+1} simulation for experiment %s"})
         reporter.generate_latex_report(report_root, list_of_exp_paths, conf.param_path, conf.index_col,
                             conf.drop_keys_in_report, timestamp, fig_params, 0.5, conf.param_descs)
         
