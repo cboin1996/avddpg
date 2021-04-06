@@ -28,7 +28,7 @@ class Config():
 
         """Environment"""
         self.num_platoons = 2 # the number of platoons for training and simulation
-        self.pl_size = 1 # the number of following vehicles in the platoon.
+        self.pl_size = 2 # the number of following vehicles in the platoon.
         self.pl_leader_reset_a = 0 # max initial acceleration of the platoon leader (used in the calculation for \dot{a_{i-1}}) (bound for uniform, std_dev for normal)
         self.reset_max_u = 0.100 # max initial control input of the platoon leader (used in the calculation for \dot{a_{i-1}}, (bound for uniform, std_dev for normal)
 
@@ -64,7 +64,7 @@ class Config():
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
 
-        self.total_time_steps = 1000
+        self.total_time_steps = 1000000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
