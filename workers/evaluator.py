@@ -38,7 +38,7 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
     if actors is None:
         actors = []
         for m in range(num_models):
-            tag = conf.img_tag % (p+1, m+1)
+            tag = conf.img_tag % (pl_idx, m+1)
             actors.append(tf.keras.models.load_model(os.path.join(root_path, conf.actor_fname % (tag)), compile=False))
 
     input_opts = {conf.guasfig_name : [util.get_random_val(conf.rand_gen, conf.reset_max_u, std_dev=conf.reset_max_u, config=conf)

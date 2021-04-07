@@ -78,11 +78,13 @@ def run(base_dir, timestamp):
 
     num_models = conf.pl_size
     num_platoons = conf.num_platoons
+    log.info(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
+    
     for p in range(num_platoons):
+        log.info(f"--- Platoon {p+1} summary ---")
         env = environment.Platoon(conf.pl_size, conf)
         all_envs.append(env)
 
-        log.info(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
         all_num_states.append(env.num_states)
         all_num_actions.append(env.num_actions)
 
@@ -168,6 +170,7 @@ def run(base_dir, timestamp):
     all_critic_grad_list = []
 
     if conf.fed_method == conf.hfrl:
+        log.info(f"{conf.fed_method} enabled!")
         for m in range(num_models):
             actor_grad_list = []
             critic_grad_list = []
@@ -239,9 +242,8 @@ def run(base_dir, timestamp):
                         all_target_actors[p][m].set_weights(ta_new_weights)
                         all_target_critics[p][m].set_weights(tc_new_weights)
 
-            # TODO: Fix fedAvg server to agv across like vehicles in platoons.. pl1_actor1 avg pl2_actor1 and so on..
             # apply FL aggregation method, and reapply gradients to models
-            if conf.method == conf.hfrl:
+            if conf.fed_method == conf.hfrl:
                 for p in range(num_platoons):
                     all_rbuffers_are_filled = True
                     if False in all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
@@ -253,8 +255,8 @@ def run(base_dir, timestamp):
                     critic_avg_grads = fed_server.get_avg_grads(all_critic_grad_list)
                     for p in range(num_platoons):
                         for m in range(num_models):
-                            critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads, all_critics[p][m].trainable_variables))
-                            actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads, all_actors[p][m].trainable_variables))
+                            all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[m], all_critics[p][m].trainable_variables))
+                            all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[m], all_actors[p][m].trainable_variables))
 
                             # update the target networks
                             tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, all_target_critics[p][m].weights, all_critics[p][m].weights, all_target_actors[p][m].weights, all_actors[p][m].weights)

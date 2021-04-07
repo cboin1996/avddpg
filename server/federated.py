@@ -20,6 +20,14 @@ class Server:
                                                                     N is the number of layers in each model
                                                                     M is the number of models in each system
                                                                     X is the number of systems
+        Returns:
+                                                                        model 1                         
+            (list) : averaged horizontally model-wise s.t.       [[tf.tensor1...tf.tensorN], 
+                                                                              .
+                                                                              .
+                                                                              .        
+                                                                        model M                                                       
+                                                                  [tf.tensor1...tf.tensorN]]
 
         """
         system_avg_grads = []
@@ -70,8 +78,14 @@ if __name__=="__main__":
         for m in range(num_models):
             grads = grads_list[p][m]
             fed_proc_grads[m][p] = grads
+
+    fed_avg = server.get_avg_grads(fed_proc_grads)
     print(fed_proc_grads)
-    print(server.get_avg_grads(fed_proc_grads))
+    print("")
+    print(fed_avg)
+    for p in range(num_platoons):
+        for m in range(num_models):
+            print(fed_avg[m])
 
 
     # print(np.stack(grad_np, axis=1))
