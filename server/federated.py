@@ -52,7 +52,7 @@ if __name__=="__main__":
         [[[10,11,12], [9,10], [11,12]],
         [[13,14,15], [13,14], [15,16]]],
     ]
-    num_models = 2
+    num_models = 1
     num_platoons = 2
     pl1_model1 = [np.array([1,2,3]), np.array([1,2]), np.array([3,4])]
     pl1_model2 = [np.array([7,8,9]), np.array([5,6]), np.array([7,8])]
@@ -60,10 +60,8 @@ if __name__=="__main__":
     pl2_model2 = [np.array([13,14,15]), np.array([13,14]), np.array([15,16])]
 
     grads_list = [
-        [pl1_model1,
-        pl1_model2],
-        [pl2_model1,
-        pl2_model2]
+        [pl1_model1],
+        [pl2_model1]
     ]
 
     fed_proc_grads = []
@@ -73,12 +71,10 @@ if __name__=="__main__":
         for p in range(num_platoons):
             model_grads.append([])
         fed_proc_grads.append(model_grads)
-
     for p in range(num_platoons): # simulating collecting the gradients
         for m in range(num_models):
             grads = grads_list[p][m]
             fed_proc_grads[m][p] = grads
-
     fed_avg = server.get_avg_grads(fed_proc_grads)
     print(fed_proc_grads)
     print("")

@@ -19,7 +19,7 @@ class Config():
         self.hfrl = "horizontal federated"
         self.vfrl = "vertical federated"
         self.nofrl = "normal"
-        self.fed_method = self.hfrl
+        self.fed_method = self.nofrl
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.hfrl or self.fed_method == self.vfrl) and (self.framework == self.dcntrl)
         self.res_dir = self.res_dir
@@ -27,8 +27,8 @@ class Config():
         self.param_path = self.param_path
 
         """Environment"""
-        self.num_platoons = 2 # the number of platoons for training and simulation
-        self.pl_size = 1 # the number of following vehicles in the platoon.
+        self.num_platoons = 1 # the number of platoons for training and simulation
+        self.pl_size = 2 # the number of following vehicles in the platoon.
         self.pl_leader_reset_a = 0 # max initial acceleration of the platoon leader (used in the calculation for \dot{a_{i-1}}) (bound for uniform, std_dev for normal)
         self.reset_max_u = 0.100 # max initial control input of the platoon leader (used in the calculation for \dot{a_{i-1}}, (bound for uniform, std_dev for normal)
 
