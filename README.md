@@ -6,4 +6,6 @@ v0.2 - Working on model A and model B to the same environment format, where the 
 
 v0.3 - Multi vehicle centralized and decentralized approach
 
-v0.4 - Multi vehicle support
+v0.4 - Multi vehicle and multi platoon support w/ inter/intra FRL
+
+v0.5 - Removing of critic from FRL procedure

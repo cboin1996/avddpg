@@ -24,7 +24,8 @@ class Config():
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.interfrl or self.fed_method == self.intrafrl) and (self.framework == self.dcntrl)
         self.fed_update_count = 50 # number of episodes between federated averaging updates
-        self.fed_cutoff_ratio = 0.65 # the ratio to toral number of episodes at which FL is cutoff
+        self.fed_cutoff_ratio = 0.65 # the ratio to toral number of episodes at which FRL is cutoff
+        self.fed_update_delay = 15 # the time in second between updates during a training episode for FRL.
         self.res_dir = self.res_dir
         self.report_dir = "reports"
         self.param_path = self.param_path
@@ -72,6 +73,7 @@ class Config():
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
         self.steps_per_episode = int(self.episode_sim_time/self.sample_rate)
+        self.fed_update_delay_steps = int(self.fed_update_delay/self.sample_rate)
 
         self.number_of_episodes = int(self.total_time_steps/self.steps_per_episode)
         
@@ -143,6 +145,7 @@ class Config():
                             "framework" : "Decentralized or centralized",
                             "fed_enabled" : "Whether FRL is enabled",
                             "fed_update_count" : "The number of episodes between a federated averaging update",
+                            "fed_update_delay" : "the time in second between updates during a training episode for FRL",
                             "fed_cutoff_ratio" : "The percent of all episodes before ending federated updates",
                             "num_platoons" : "The number of platoons",
                             "pl_size" : "The size of the platoon",
@@ -171,6 +174,7 @@ class Config():
                             "sample_rate" : "The sample rate of the system",
                             "episode_sim_time" : "The time in seconds to run simulations for",
                             "steps_per_episode" : "The number of steps per episode",
+                            "fed_update_delay_steps" : "The number of steps in an episode between a FRL update",
                             "number_of_episodes" : "The total number of episodes for training",
                             "gamma" : "The discounted reward coefficient",
                             "fed_cutoff_episode" : "The episode at which federated learning terminates",
