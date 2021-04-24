@@ -9,8 +9,9 @@ class Server:
 
     def get_avg_grads(self, system_grads):
         """
+        Computes the average gradients of a system of models.. by averaging horizontally across system environments
         Args:                                                           system 1 model 1               system X model 1
-            all_model_gradients (list) : expecting list of shape [[[tf.tensor1...tf.tensorN],  ... [tf.tensor1...tf.tensorN]], 
+            system_grads (list) : expecting list of shape         [[[tf.tensor1...tf.tensorN],  ... [tf.tensor1...tf.tensorN]], 
                                                                     .                       .
                                                                     .                                 .
                                                                     .                                           .
@@ -43,6 +44,7 @@ class Server:
             system_avg_grads.append(averaged_grads)
         
         return system_avg_grads
+    
 
 if __name__=="__main__":
     server = Server("fed")

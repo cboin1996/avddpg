@@ -16,19 +16,22 @@ class Config():
         self.model = self.model
         self.dcntrl = "decentralized"
         self.cntrl = "centralized"
-        self.hfrl = "horizontal federated"
-        self.vfrl = "vertical federated"
+        """ Federated Learning"""
+        self.interfrl = "inter federated" # averages across the same environments from multiple platoons
+        self.intrafrl = "intra federated" # averages all envirnoments within a platoon, no sharing across platoons
         self.nofrl = "normal"
-        self.fed_method = self.nofrl
+        self.fed_method = self.intrafrl
         self.framework = self.dcntrl
-        self.fed_enabled = (self.fed_method == self.hfrl or self.fed_method == self.vfrl) and (self.framework == self.dcntrl)
+        self.fed_enabled = (self.fed_method == self.interfrl or self.fed_method == self.intrafrl) and (self.framework == self.dcntrl)
+        self.fed_update_count = 50 # number of episodes between federated averaging updates
+        self.fed_cutoff_ratio = 0.65 # the ratio to toral number of episodes at which FL is cutoff
         self.res_dir = self.res_dir
         self.report_dir = "reports"
         self.param_path = self.param_path
 
         """Environment"""
-        self.num_platoons = 1 # the number of platoons for training and simulation
-        self.pl_size = 2 # the number of following vehicles in the platoon.
+        self.num_platoons = 2 # the number of platoons for training and simulation
+        self.pl_size = 1 # the number of following vehicles in the platoon.
         self.pl_leader_reset_a = 0 # max initial acceleration of the platoon leader (used in the calculation for \dot{a_{i-1}}) (bound for uniform, std_dev for normal)
         self.reset_max_u = 0.100 # max initial control input of the platoon leader (used in the calculation for \dot{a_{i-1}}, (bound for uniform, std_dev for normal)
 
@@ -73,7 +76,7 @@ class Config():
         self.number_of_episodes = int(self.total_time_steps/self.steps_per_episode)
         
         self.gamma = 0.99 # Discount factor for future rewards
-
+        self.fed_cutoff_episode  = int(self.fed_cutoff_ratio * self.number_of_episodes)
         self.centrl_hidd_mult = 1.2
         
         # Learning rate for actor-critic models
@@ -128,7 +131,7 @@ class Config():
         self.pl_rews_for_simulations = []
         self.index_col = "timestamp"
         self.timestamp = None
-        self.drop_keys_in_report = ["modelA", "modelB", "dcntrl", "cntrl", "hfrl", "vfrl", "nofrl", "res_dir", "report_dir", "param_path", "euler",
+        self.drop_keys_in_report = ["modelA", "modelB", "dcntrl", "cntrl", "interfrl", "intrafrl", "nofrl", "res_dir", "report_dir", "param_path", "euler",
                                     "exact", "normal", "uniform", "show_env", "actor_fname", "actor_picname", "actor_weights", "critic_fname", "critic_picname",
                                     "critic_weights", "t_actor_fname", "t_actor_picname", "t_actor_weights", "t_critic_fname", "t_critic_picname", 
                                     "t_critic_weights", "fig_path", "zerofig_name", "guasfig_name", "stepfig_name", "rampfig_name", "dirs",
@@ -139,6 +142,8 @@ class Config():
                             "fed_method" : "Type of federated learning used",
                             "framework" : "Decentralized or centralized",
                             "fed_enabled" : "Whether FRL is enabled",
+                            "fed_update_count" : "The number of episodes between a federated averaging update",
+                            "fed_cutoff_ratio" : "The percent of all episodes before ending federated updates",
                             "num_platoons" : "The number of platoons",
                             "pl_size" : "The size of the platoon",
                             "pl_leader_reset_a" : "The mean value of the platoon leader acceleration upon environment reset",
@@ -168,6 +173,7 @@ class Config():
                             "steps_per_episode" : "The number of steps per episode",
                             "number_of_episodes" : "The total number of episodes for training",
                             "gamma" : "The discounted reward coefficient",
+                            "fed_cutoff_episode" : "The episode at which federated learning terminates",
                             "centrl_hidd_mult" : "Multiplier for number of nodes across hidden layers",
                             "critic_lr" : "Learning rate for critic network",
                             "actor_lr" : "Learning rate for actor network",

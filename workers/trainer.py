@@ -169,13 +169,25 @@ def run(base_dir, timestamp):
     all_actor_grad_list = []
     all_critic_grad_list = []
 
-    if conf.fed_method == conf.hfrl:
-        log.info(f"{conf.fed_method} enabled!")
+    if conf.fed_method == conf.interfrl:
+        log.info(f"{conf.fed_method} enabled, disabling at episode {conf.fed_cutoff_episode} with updates every {conf.fed_update_count} episodes!")
         for m in range(num_models):
             actor_grad_list = []
             critic_grad_list = []
 
             for p in range(num_platoons):
+                actor_grad_list.append([])
+                critic_grad_list.append([])
+            all_actor_grad_list.append(actor_grad_list)
+            all_critic_grad_list.append(critic_grad_list)
+    
+    if conf.fed_method == conf.intrafrl:
+        log.info(f"{conf.fed_method} enabled, disabling at episode {conf.fed_cutoff_episode} with updates every {conf.fed_update_count} episodes!")
+        for p in range(num_platoons):
+            actor_grad_list = []
+            critic_grad_list = []
+
+            for m in range(num_models):
                 actor_grad_list.append([])
                 critic_grad_list.append([])
             all_actor_grad_list.append(actor_grad_list)
@@ -187,7 +199,15 @@ def run(base_dir, timestamp):
     num_actions = all_num_actions[0]
     num_states = all_num_states[0]
     actions = np.zeros((num_platoons, num_models, num_actions)) 
+
     for ep in range(conf.number_of_episodes):
+        fed_mask = conf.fed_enabled and (ep % conf.fed_update_count) == 0 and ep <= conf.fed_cutoff_episode
+        if fed_mask:
+            log.info(f"Applying federated averaging at episode {ep}.")
+        
+        if conf.fed_enabled and ep == conf.fed_cutoff_episode + 1:
+            log.info(f"Turned off federated learning as cutoff ratio [{conf.fed_cutoff_ratio}] ({conf.fed_cutoff_episode} episodes) passed at ep [{ep}]")
+
         all_prev_states = []
         all_episodic_reward_counters = []
         for p in range(num_platoons): # reset environments and episodic reward counters
@@ -230,9 +250,13 @@ def run(base_dir, timestamp):
                                                         all_target_actors[p][m], all_target_critics[p][m])
 
                         # append gradients for avg'ing if federated enabled
-                        if conf.fed_method == conf.hfrl:
+                        if conf.fed_method == conf.interfrl:
                             all_actor_grad_list[m][p] = actor_grad
-                            all_critic_grad_list[m][p] = critic_grad                    
+                            all_critic_grad_list[m][p] = critic_grad  
+
+                        elif conf.fed_method == conf.intrafrl:
+                            all_actor_grad_list[p][m] = actor_grad
+                            all_critic_grad_list[p][m] = critic_grad                
 
                         all_critic_optimizers[p][m].apply_gradients(zip(critic_grad, all_critics[p][m].trainable_variables))
                         all_actor_optimizers[p][m].apply_gradients(zip(actor_grad, all_actors[p][m].trainable_variables))
@@ -243,7 +267,7 @@ def run(base_dir, timestamp):
                         all_target_critics[p][m].set_weights(tc_new_weights)
 
             # apply FL aggregation method, and reapply gradients to models
-            if conf.fed_method == conf.hfrl:
+            if fed_mask:
                 for p in range(num_platoons):
                     all_rbuffers_are_filled = True
                     if False in all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
@@ -255,8 +279,13 @@ def run(base_dir, timestamp):
                     critic_avg_grads = fed_server.get_avg_grads(all_critic_grad_list)
                     for p in range(num_platoons):
                         for m in range(num_models):
-                            all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[m], all_critics[p][m].trainable_variables))
-                            all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[m], all_actors[p][m].trainable_variables))
+                            if conf.fed_method == conf.interfrl:
+                                all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[m], all_critics[p][m].trainable_variables))
+                                all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[m], all_actors[p][m].trainable_variables))
+                                
+                            elif conf.fed_method == conf.intrafrl:
+                                all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[p], all_critics[p][m].trainable_variables))
+                                all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[p], all_actors[p][m].trainable_variables))
 
                             # update the target networks
                             tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, all_target_critics[p][m].weights, all_critics[p][m].weights, all_target_actors[p][m].weights, all_actors[p][m].weights)
