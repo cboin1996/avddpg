@@ -1,4 +1,4 @@
-# Autonomous Vehicle Reinforcement Learning using DDPG Algorithm v0.4
+# Autonomous Vehicle Reinforcement Learning using DDPG Algorithm v0.5
 
 v0.1 - Working model for model A and model B
 
