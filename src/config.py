@@ -61,7 +61,7 @@ class Config():
 
         """Trainer"""
         self.can_terminate = True
-        self.random_seed = 3
+        self.random_seed = 4
         self.evaluation_seed = 6
 
         self.normal = 'normal' 
