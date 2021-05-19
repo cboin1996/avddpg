@@ -115,7 +115,8 @@ def run(base_dir, timestamp):
                                     layer2_size=conf.actor_layer2_size)
             critic = model.get_critic(env.num_states, env.num_actions, hidd_mult=env.hidden_multiplier,
                                     layer1_size=conf.critic_layer1_size, 
-                                    layer2_size=conf.critic_layer2_size)
+                                    layer2_size=conf.critic_layer2_size,
+                                    action_layer_size=conf.critic_act_layer_size)
 
             actors.append(actor)
             critics.append(critic)
@@ -126,7 +127,8 @@ def run(base_dir, timestamp):
                                             layer2_size=conf.actor_layer2_size)
             target_critic = model.get_critic(env.num_states, env.num_actions, hidd_mult=env.hidden_multiplier,
                                             layer1_size=conf.critic_layer1_size, 
-                                            layer2_size=conf.critic_layer2_size)
+                                            layer2_size=conf.critic_layer2_size,
+                                            action_layer_size=conf.critic_act_layer_size)
 
             # Making the weights equal initially
             target_actor.set_weights(actor.get_weights())
@@ -167,25 +169,32 @@ def run(base_dir, timestamp):
     Note that we iterate models, then platoons for HFRL. This is to save having to reshape the data later, as we wish to avg 
     Gradients across the common vehicles in each platoon .. AVERAGE(platoon1_vehicle1:platoonN_vehicle1)"""
     all_actor_grad_list = []
+    all_critic_grad_list = []
 
     if conf.fed_method == conf.interfrl:
         log.info(f"{conf.fed_method} enabled, disabling at episode {conf.fed_cutoff_episode} with updates every {conf.fed_update_count} episodes!")
         for m in range(num_models):
             actor_grad_list = []
+            critic_grad_list = []
 
             for p in range(num_platoons):
                 actor_grad_list.append([])
+                critic_grad_list.append([])
             all_actor_grad_list.append(actor_grad_list)
+            all_critic_grad_list.append(critic_grad_list)
     
     if conf.fed_method == conf.intrafrl:
         log.info(f"{conf.fed_method} enabled, disabling at episode {conf.fed_cutoff_episode} with updates every {conf.fed_update_count} episodes!")
         for p in range(num_platoons):
             actor_grad_list = []
+            critic_grad_list = []
 
             for m in range(num_models):
                 actor_grad_list.append([])
-
+                critic_grad_list.append([])
+            
             all_actor_grad_list.append(actor_grad_list)
+            all_critic_grad_list.append(critic_grad_list)
 
     assert len(set(all_num_actions)) == 1 # make sure the action and state spaces are identical across the platoons
     assert len(set(all_num_states)) == 1
@@ -246,9 +255,11 @@ def run(base_dir, timestamp):
                         # append gradients for avg'ing if federated enabled
                         if conf.fed_method == conf.interfrl:
                             all_actor_grad_list[m][p] = actor_grad
+                            all_critic_grad_list[m][p] = critic_grad
 
                         elif conf.fed_method == conf.intrafrl:
                             all_actor_grad_list[p][m] = actor_grad
+                            all_critic_grad_list[p][m] = critic_grad
 
                         all_critic_optimizers[p][m].apply_gradients(zip(critic_grad, all_critics[p][m].trainable_variables))
                         all_actor_optimizers[p][m].apply_gradients(zip(actor_grad, all_actors[p][m].trainable_variables))
@@ -269,17 +280,21 @@ def run(base_dir, timestamp):
                 
                 if all_rbuffers_are_filled:
                     actor_avg_grads = fed_server.get_avg_grads(all_actor_grad_list)
+                    critic_avg_grads = fed_server.get_avg_grads(all_critic_grad_list)
                     for p in range(num_platoons):
                         for m in range(num_models):
                             if conf.fed_method == conf.interfrl:
                                 all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[m], all_actors[p][m].trainable_variables))
+                                all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[m], all_critics[p][m].trainable_variables))
                                 
                             elif conf.fed_method == conf.intrafrl:
                                 all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[p], all_actors[p][m].trainable_variables))
+                                all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[p], all_critics[p][m].trainable_variables))
 
                             # update the target networks
                             tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, all_target_critics[p][m].weights, all_critics[p][m].weights, all_target_actors[p][m].weights, all_actors[p][m].weights)
                             all_target_actors[p][m].set_weights(ta_new_weights)
+                            all_target_critics[p][m].set_weights(tc_new_weights)
                 
             if True in all_terminals: # break if any of the platoons have failed
                 break

@@ -39,7 +39,7 @@ def get_actor(num_states, num_actions, high_bound, seed_int=None, hidd_mult=1,
 
 
 def get_critic(num_states, num_actions, hidd_mult=1, seed_int=None,
-               layer1_size=400, layer2_size=300):
+               layer1_size=400, layer2_size=300, action_layer_size=64):
     """get the critic network
 
     Args:
@@ -67,7 +67,7 @@ def get_critic(num_states, num_actions, hidd_mult=1, seed_int=None,
 
     # Action as input
     action_input = layers.Input(shape=(num_actions))
-    action_out = layers.Dense(int(layer2_size * hidd_mult), activation="relu", kernel_regularizer='l2', kernel_initializer=layer2_init)(action_input)
+    action_out = layers.Dense(int(action_layer_size * hidd_mult), activation="relu", kernel_regularizer='l2', kernel_initializer=layer2_init)(action_input)
     action_out = layers.BatchNormalization()(action_out)
 
     # Both are passed through seperate layer before concatenating
