@@ -8,4 +8,4 @@ v0.3 - Multi vehicle centralized and decentralized approach
 
 v0.4 - Multi vehicle and multi platoon support w/ inter/intra FRL
 
-v0.5 - Removing of critic from FRL procedure
+v0.5 - Patched reporter for inter/intra FRL experiments, added tunability of critic actor layer

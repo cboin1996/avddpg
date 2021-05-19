@@ -2,7 +2,6 @@
 # Vscode #
 .vscode
 .ropeproject
-requirements.txt
 # venv
 venv
 
