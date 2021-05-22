@@ -39,7 +39,7 @@ class Config():
         self.pl_leader_tau = 0.5
         self.exact = 'exact'
         self.euler = 'euler'
-        self.method = self.exact
+        self.method = self.euler
 
         self.timegap = 1.25
         self.dyn_coeff = 0.5
@@ -67,8 +67,9 @@ class Config():
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
+        self.rand_states = False # whether or not to use random initial states for each environment reset.
 
-        self.total_time_steps = 1000000
+        self.total_time_steps = 1000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
@@ -170,6 +171,7 @@ class Config():
                             "random_seed" : "Seed for the experiment across all python libraries",
                             "evaluation_seed" : "Seed used during final simulation",
                             "rand_gen" : "Either uniform or normal for random number generation",
+                            "rand_states" : "whether or not to use random initial states for each environment reset",
                             "total_time_steps" : "The number of timesteps to train on",
                             "sample_rate" : "The sample rate of the system",
                             "episode_sim_time" : "The time in seconds to run simulations for",
