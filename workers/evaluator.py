@@ -12,8 +12,9 @@ import logging
 
 import warnings
 
-def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, const_bound=None, ramp_bound=None, root_path=None, seed=True, pl_idx=None):
+def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, seed=True, pl_idx=None, debug_enabled=False):
     log = logging.getLogger(__name__)
+    print("====__--- Launching Evaluator for Platoon 1! ---__====")
     if conf is None:
         conf_path = os.path.join(root_path, config.Config.param_path)
         log.info(f"Loading configuration instance from {conf_path}")
@@ -38,8 +39,7 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
     if actors is None:
         actors = []
         for m in range(num_models):
-            tag = conf.img_tag % (pl_idx, m+1)
-            actors.append(tf.keras.models.load_model(os.path.join(root_path, conf.actor_fname % (tag)), compile=False))
+            actors.append(tf.keras.models.load_model(os.path.join(root_path, conf.actor_fname % (pl_idx, m+1)), compile=False))
 
     input_opts = {conf.guasfig_name : [util.get_random_val(conf.rand_gen, conf.reset_max_u, std_dev=conf.reset_max_u, config=conf)
                                         for _ in range(conf.steps_per_episode)]}
@@ -51,6 +51,7 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
     num_rows = env.def_num_states + 1
     num_cols = 1
     episodic_reward_counters = np.array([0]*num_models, dtype=np.float32)
+
     for typ, input_list in input_opts.items():
         fig, axs = plt.subplots(num_rows,num_cols, figsize = (4,12))
         states = env.reset()
@@ -62,7 +63,11 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, step_bound=None, 
                 state = tf.expand_dims(tf.convert_to_tensor(states[m]), 0)
                 actions[m] = ddpgagent.policy(actors[m](state), lbound=conf.action_low, hbound=conf.action_high)[0] # do not use noise in the simulation
     
-            states, rewards, terminal = env.step(actions.flatten(), input_list[i])
+            states, rewards, terminal = env.step(actions.flatten(), input_list[i], debug_enabled)
+            if debug_enabled:
+                user_input = input("Advance to the next timestep 'q' quits: ")
+                if user_input == 'q':
+                    return
 
             for m in range(num_models):
                 episodic_reward_counters[m] += rewards[m]

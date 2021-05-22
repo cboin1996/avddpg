@@ -58,11 +58,15 @@ class Platoon:
             output += f"{f.render(str_form=True)} <~ "
         print(output, end="\r", flush=True)
     
-    def step(self, actions, leader_exog=None):
+
+
+    def step(self, actions, leader_exog=None, debug_mode=False):
         """Advances the environment one step
 
         Args:
             actions (list): list of actions from the DNN model
+            leader_exog (float): the exogenous value for the platoon leader
+            debug_mode (bool): whether to run debug mode
 
         Returns:
             list, float : a list of states calculated for the platoon,
@@ -79,16 +83,33 @@ class Platoon:
             else:
                 exog = self.followers[i-1].u 
 
-            f_state, f_reward, f_terminal = follower.step(action, exog)
+            f_state, f_reward, f_terminal = follower.step(action, exog, debug_mode)
             states.append(f_state)
             rewards.append(f_reward)
             terminals.append(f_terminal)
+
         if self.config.framework == self.config.cntrl: 
             states = [list(np.concatenate(states).flat)]
             rewards = [self.get_reward(states, rewards)]
 
         platoon_done = True if True in terminals else False
         return states, rewards, platoon_done
+    
+    def get_exogenous_info(self, idx, leader_exog):
+
+        if self.config.model == self.config.modelB:
+            if idx == 0:                    
+                exog = self.front_u if leader_exog == None else leader_exog
+            else:
+                exog = self.followers[idx-1].u # model B uses the control input, u as exogenous
+
+        elif self.config.model == self.config.modelA:
+            if idx == 0:                    
+                exog = self.front_accel if leader_exog == None else leader_exog
+            else:
+                exog = self.followers[idx-1].x[2] # for model A use the accel of the leading vehicle as exogenous
+        
+        return exog
     
     def get_reward(self, states, rewards):
         """Calculates the platoons reward
@@ -154,7 +175,8 @@ class Vehicle:
                 a_lead (float, optional) : the acceleration of the leading vehicle in the platoon 
         """
         self.config = config
-        
+        self.step_count = 0
+
         self.idx = idx
         self.h = self.config.timegap
         self.T = self.config.sample_rate
@@ -181,50 +203,75 @@ class Vehicle:
 
         self.rand_states = rand_states
 
-
-        e = np.exp(-self.T/self.tau)
-        e_lead = np.exp(-self.T/self.tau_lead)
-
         self.num_actions = 1
 
         self.reset(a_lead) # initializes the states randomly
 
         """ Defining the system matrices """
-        A_13 = - self.h * self.tau + self.h * self.tau * e \
-                - self.tau * self.T + self.tau**2 - (self.tau ** 2) * e
+        self.set_system_matrices(self.config.method)
 
-        A_14 =   self.tau_lead * self.T - self.tau_lead ** 2 \
-                + (self.tau_lead ** 2) * e_lead
+    def set_system_matrices(self, method):
+        e = np.exp(-self.T/self.tau)
+        e_lead = np.exp(-self.T/self.tau_lead)
+        if method == self.config.euler:
+            print("Using Euler Discretization.")
+            self.A = np.array( [ [1, self.T, -self.h*self.T,                                0],
+                                 [0,      1, -self.T,                                  self.T],
+                                 [0,      0, 1 -(self.T/self.tau),                          0],
+                                 [0,      0, 0                   ,  1 -(self.T/self.tau_lead)]])
+
+            self.B = np.array( [0,
+                                0,
+                                self.T/self.tau,
+                                0])
+            
+            self.C = np.array( [0,
+                                0,
+                                0,
+                                self.T/self.tau_lead])
+
+        elif method == self.config.exact:
+            print("Using Exact Discretization.")
+            A_13 = - self.h * self.tau + self.h * self.tau * e \
+            - self.tau * self.T + self.tau**2 - (self.tau ** 2) * e
+
+            A_14 =   self.tau_lead * self.T - self.tau_lead ** 2 \
+                    + (self.tau_lead ** 2) * e_lead
+            
+            A_23 = - self.tau + self.tau * e 
+
+            A_24 =   self.tau_lead - self.tau_lead * e_lead
+
+            self.A = np.array( [ [1, self.T, A_13,   A_14],
+                                 [0, 1     , A_23,   A_24],
+                                 [0, 0     , e   ,   0   ],
+                                 [0, 0     , 0   , e_lead]])
+            
+            B_11 = - self.h * self.T + self.h * self.tau * e \
+                    - self.h * self.tau - (self.T ** 2) / 2 + self.tau * self.T \
+                    + (self.tau ** 2) * e - self.tau ** 2
+            
+            B_21 = - self.T - self.tau * e + self.tau 
+
+            self.B = np.array([B_11, 
+                               B_21,
+                               -e + 1,
+                               0])
+
+            C_11 =    (self.T ** 2)/2 - self.tau_lead * self.T \
+                    - (self.tau_lead ** 2) * e_lead + self.tau_lead ** 2
+            C_21 =    self.T + self.tau_lead * e_lead - self.tau_lead
+
+            self.C = np.array([C_11,
+                               C_21,
+                               0,
+                               -e_lead + 1])
+
+        print(" --- Vehicle %s Initialized System Matrices --- " % (self.idx))
+        print("A Matrix: ", self.A)
+        print("B Matrix: ", self.B)
+        print("C Matrix: ", self.C)
         
-        A_23 = - self.tau + self.tau * e 
-
-        A_24 =   self.tau_lead - self.tau_lead * e_lead
-
-        self.A = np.array([[1, self.T, A_13,   A_14],
-                            [0, 1     , A_23,   A_24],
-                            [0, 0     , e   ,   0   ],
-                            [0, 0     , 0   , e_lead]])
-        
-        B_11 = - self.h * self.T + self.h * self.tau * e \
-                - self.h * self.tau - (self.T ** 2) / 2 + self.tau * self.T \
-                + (self.tau ** 2) * e - self.tau ** 2
-        
-        B_21 = - self.T - self.tau * e + self.tau 
-
-        self.B = np.array([B_11, 
-                            B_21,
-                            -e + 1,
-                            0])
-
-        C_11 =    (self.T ** 2)/2 - self.tau_lead * self.T \
-                - (self.tau_lead ** 2) * e_lead + self.tau_lead ** 2
-        C_21 =    self.T + self.tau_lead * e_lead - self.tau_lead
-
-        self.C = np.array([C_11,
-                            C_21,
-                            0,
-                            - e_lead + 1])
-
     def render(self, str_form=False):
         output = f"|x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)}|"
         if str_form == True:
@@ -232,22 +279,47 @@ class Vehicle:
         else:
             print(output, end='\r', flush=True)
     
-    def step(self, u, exog_info):
+    def step(self, u, exog_info, debug_mode=False):
         """advances the vehicle model by one timestep
 
         Args:
             u (float): the action to take
             exog_info (float): the exogenous information given to the vehicle
         """
+        self.step_count +=1
         terminal = False
         self.u = u
         self.exog = exog_info 
+
+        if debug_mode:
+            print("====__  Vehicle %s __====" % (self.idx))
+            print("--- Hyperparameters ---")
+            print(f"\th: {self.h}, T: {self.T}, tau: {self.tau}, tau_lead: {self.tau_lead}")
+            print("--- Evolution Equation Timestep %s ---" % (self.step_count))
+            print("\tA Matrix: ", self.A)
+            print("\tx before evolution: ", self.x)
+
+        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
+
         if abs(self.x[0]) > self.config.max_ep and self.config.can_terminate:
             terminal=True
             self.reward = self.config.terminal_reward  * self.config.re_scalar
         else:
             self.reward = (self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(self.u)**2)  * self.config.re_scalar
-        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
+
+        if debug_mode:
+            print("\tB Matrix: ", self.B)
+            print("\tu: ", self.u)
+            print("\tC Matrix: ", self.C)
+            print("\texog: ", self.exog)
+            print("\tx after evolution: ", self.x)
+            print("--- Reward Equation ---")
+            print("\tx[0]=epi: ", self.x[0])
+            print("\ta: ", self.a)
+            print("\tx[1]=evi: ", self.x[1])
+            print("\tb: ", self.b)
+            print("\tu: ", self.u)
+
 
         return self.x[0:self.num_states], -self.reward, terminal # return only the elements that correspond to the state size.
     
@@ -259,6 +331,7 @@ class Vehicle:
         """
         self.u = 0
         self.exog_info = 0
+        self.step_count = 0
 
         if self.rand_states == True:
             self.x = np.array([util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.config.reset_ep_max, config=self.config), # intial gap error (m)

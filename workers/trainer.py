@@ -82,7 +82,7 @@ def run(base_dir, timestamp):
     
     for p in range(num_platoons):
         log.info(f"--- Platoon {p+1} summary ---")
-        env = environment.Platoon(conf.pl_size, conf)
+        env = environment.Platoon(conf.pl_size, conf, rand_states=conf.rand_states)
         all_envs.append(env)
 
         all_num_states.append(env.num_states)
