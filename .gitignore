@@ -2,18 +2,23 @@
 # Vscode #
 .vscode
 .ropeproject
-requirements.txt
 # venv
 venv
 
 
 .outputs
 
+# compute canada files
+jout_files
+launch_graham.sh
 
+# General
 __pycache__
 *.pyc
 .DS_STORE
 tensorflow/
 test.py
+
+# Project dirs
 res/
 reports/

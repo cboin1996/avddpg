@@ -56,174 +56,286 @@ def run(base_dir, timestamp):
     if conf.fed_enabled:
         fed_server = federated.Server('ddpg')
 
-    env = environment.Platoon(conf.pl_size, conf)
+    all_envs = []
+    all_ou_objects = []
+    all_actors = []
+    all_critics = []
+    all_target_actors = []
+    all_target_critics = []
+    all_actor_optimizers = []
+    all_critic_optimizers = []
+    all_ep_reward_lists = []
+    all_avg_reward_lists = []
+    all_rbuffers = []
 
-    log.info(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
-    num_states = env.num_states
-    num_actions = env.num_actions
-    num_models = env.num_models
-
-    log.info(f"Number of models : {num_models}")
-    log.info("Size of Model input ->  {}".format(num_states))
-    log.info("Size of Model output ->  {}".format(num_actions))
+    all_rbuffers_filled = []
 
     high_bound = conf.action_high
-    low_bound  = conf.action_low
+    low_bound = conf.action_low
 
-    log.info("Max Value of Action ->  {}".format(high_bound))
-    log.info("Min Value of Action ->  {}".format(low_bound))
+    all_num_states = []
+    all_num_actions = []
 
-    ou_objects = []
-    actors = []
-    critics = []
-    target_actors = []
-    target_critics = []
-    actor_optimizers = []
-    critic_optimizers = []
-    ep_reward_lists = []
-    avg_reward_lists = []
-    rbuffers = []
-
-    actor_grad_list = []
-    critic_grad_list = []
-
-    rbuffers_filled = []
+    num_models = conf.pl_size
+    num_platoons = conf.num_platoons
+    log.info(f"Total episodes: {conf.number_of_episodes}\nSteps per episode: {conf.steps_per_episode}")
     
-    for i in range(num_models):
-        ou_objects.append(noise.OUActionNoise(mean=np.zeros(1), config=conf))
-        actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, 
-                                hidd_mult=env.hidden_multiplier, layer1_size=conf.actor_layer1_size, 
-                                layer2_size=conf.actor_layer2_size)
-        critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier,
-                                 layer1_size=conf.critic_layer1_size, 
-                                layer2_size=conf.critic_layer2_size)
+    for p in range(num_platoons):
+        log.info(f"--- Platoon {p+1} summary ---")
+        env = environment.Platoon(conf.pl_size, conf)
+        all_envs.append(env)
 
-        actors.append(actor)
-        critics.append(critic)
+        all_num_states.append(env.num_states)
+        all_num_actions.append(env.num_actions)
 
-        target_actor = model.get_actor(num_states, num_actions, high_bound, seed_int=conf.random_seed, 
-                                        hidd_mult=env.hidden_multiplier,
-                                        layer1_size=conf.actor_layer1_size, 
-                                        layer2_size=conf.actor_layer2_size)
-        target_critic = model.get_critic(num_states, num_actions, hidd_mult=env.hidden_multiplier,
-                                        layer1_size=conf.critic_layer1_size, 
-                                        layer2_size=conf.critic_layer2_size)
+        log.info(f"Number of models : {num_models}")
+        log.info("Size of Model input ->  {}".format(env.num_states))
+        log.info("Size of Model output ->  {}".format(env.num_actions))
 
-        # Making the weights equal initially
-        target_actor.set_weights(actor.get_weights())
-        target_critic.set_weights(critic.get_weights())
-        target_actors.append(target_actor)
-        target_critics.append(target_critic)
+        log.info("Max Value of Action ->  {}".format(high_bound))
+        log.info("Min Value of Action ->  {}".format(low_bound))
 
-        critic_optimizers.append(tf.keras.optimizers.Adam(conf.critic_lr))
-        actor_optimizers.append(tf.keras.optimizers.Adam(conf.actor_lr))
+        ou_objects = []
+        actors = []
+        critics = []
+        target_actors = []
+        target_critics = []
+        actor_optimizers = []
+        critic_optimizers = []
+        ep_reward_lists = []
+        avg_reward_lists = []
+        rbuffers = []
 
-        ep_reward_lists.append([])
-        avg_reward_lists.append([])
-
-        rbuffers.append(replaybuffer.ReplayBuffer(conf.buffer_size, 
-                                            conf.batch_size,
-                                            num_states,
-                                            num_actions,
-                                            conf.pl_size,
-                                            ))
+        rbuffers_filled = []
         
-        actor_grad_list.append([])
-        critic_grad_list.append([])
-        rbuffers_filled.append(False)
+        for i in range(num_models):
+            ou_objects.append(noise.OUActionNoise(mean=np.zeros(1), config=conf))
+            actor = model.get_actor(env.num_states, env.num_actions, high_bound, seed_int=conf.random_seed, 
+                                    hidd_mult=env.hidden_multiplier, layer1_size=conf.actor_layer1_size, 
+                                    layer2_size=conf.actor_layer2_size)
+            critic = model.get_critic(env.num_states, env.num_actions, hidd_mult=env.hidden_multiplier,
+                                    layer1_size=conf.critic_layer1_size, 
+                                    layer2_size=conf.critic_layer2_size,
+                                    action_layer_size=conf.critic_act_layer_size)
 
-    actions = np.zeros((num_models, num_actions)) 
-    for ep in range(conf.number_of_episodes):
-        prev_states = env.reset()
-        episodic_reward_counters = np.array([0]*num_models,  dtype=np.float32)
-        for i in range(conf.steps_per_episode):
-            if conf.show_env == True:
-                env.render()
+            actors.append(actor)
+            critics.append(critic)
+
+            target_actor = model.get_actor(env.num_states, env.num_actions, high_bound, seed_int=conf.random_seed, 
+                                            hidd_mult=env.hidden_multiplier,
+                                            layer1_size=conf.actor_layer1_size, 
+                                            layer2_size=conf.actor_layer2_size)
+            target_critic = model.get_critic(env.num_states, env.num_actions, hidd_mult=env.hidden_multiplier,
+                                            layer1_size=conf.critic_layer1_size, 
+                                            layer2_size=conf.critic_layer2_size,
+                                            action_layer_size=conf.critic_act_layer_size)
+
+            # Making the weights equal initially
+            target_actor.set_weights(actor.get_weights())
+            target_critic.set_weights(critic.get_weights())
+            target_actors.append(target_actor)
+            target_critics.append(target_critic)
+
+            critic_optimizers.append(tf.keras.optimizers.Adam(conf.critic_lr))
+            actor_optimizers.append(tf.keras.optimizers.Adam(conf.actor_lr))
+
+            ep_reward_lists.append([])
+            avg_reward_lists.append([])
+
+            rbuffers.append(replaybuffer.ReplayBuffer(conf.buffer_size, 
+                                                conf.batch_size,
+                                                env.num_states,
+                                                env.num_actions,
+                                                conf.pl_size,
+                                                ))
             
-            for m in range(num_models): # iterate the list of actors here... passing in single state or concatanated for centrlz
-                tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_states[m]), 0)
-                
-                actions[m] = ddpgagent.policy(actors[m](tf_prev_state), ou_objects[m], low_bound, high_bound)[0]
 
-            states, rewards, terminal = env.step(actions.flatten(), util.get_random_val(conf.rand_gen, 
-                                                                             conf.reset_max_u, 
-                                                                             std_dev=conf.reset_max_u, 
-                                                                             config=conf))
+            rbuffers_filled.append(False)
+        
+        all_ou_objects.append(ou_objects)
+        all_actors.append(actors)
+        all_critics.append(critics)
+        all_target_actors.append(target_actors)
+        all_target_critics.append(target_critics)
+        all_actor_optimizers.append(actor_optimizers)
+        all_critic_optimizers.append(critic_optimizers)
+        all_ep_reward_lists.append(ep_reward_lists)
+        all_avg_reward_lists.append(avg_reward_lists)
+        all_rbuffers.append(rbuffers)
+
+        all_rbuffers_filled.append(rbuffers_filled)
+    
+    """ Initialization for FRL methods 
+    Note that we iterate models, then platoons for HFRL. This is to save having to reshape the data later, as we wish to avg 
+    Gradients across the common vehicles in each platoon .. AVERAGE(platoon1_vehicle1:platoonN_vehicle1)"""
+    all_actor_grad_list = []
+    all_critic_grad_list = []
+
+    if conf.fed_method == conf.interfrl:
+        log.info(f"{conf.fed_method} enabled, disabling at episode {conf.fed_cutoff_episode} with updates every {conf.fed_update_count} episodes!")
+        for m in range(num_models):
+            actor_grad_list = []
+            critic_grad_list = []
+
+            for p in range(num_platoons):
+                actor_grad_list.append([])
+                critic_grad_list.append([])
+            all_actor_grad_list.append(actor_grad_list)
+            all_critic_grad_list.append(critic_grad_list)
+    
+    if conf.fed_method == conf.intrafrl:
+        log.info(f"{conf.fed_method} enabled, disabling at episode {conf.fed_cutoff_episode} with updates every {conf.fed_update_count} episodes!")
+        for p in range(num_platoons):
+            actor_grad_list = []
+            critic_grad_list = []
 
             for m in range(num_models):
-                rbuffers[m].add((prev_states[m], 
-                                actions[m], 
-                                rewards[m], 
-                                states[m]))
-
-                episodic_reward_counters[m] += rewards[m]
-                if rbuffers[m].buffer_counter > conf.batch_size: # first fill the buffer to the batch size   
-                    rbuffers_filled[m] = True
-                    # train and update the actor critics
-                    critic_grad, actor_grad = learn(conf, rbuffers[m], actors[m], critics[m], 
-                                                    target_actors[m], target_critics[m])
-                    # append gradients for avg'ing if federated enabled
-                    actor_grad_list[m] = actor_grad
-                    critic_grad_list[m] = critic_grad                    
-
-                    critic_optimizers[m].apply_gradients(zip(critic_grad, critics[m].trainable_variables))
-                    actor_optimizers[m].apply_gradients(zip(actor_grad, actors[m].trainable_variables))
-
-                    # update the target networks
-                    tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critics[m].weights, critics[m].weights, target_actors[m].weights, actors[m].weights)
-                    target_actors[m].set_weights(ta_new_weights)
-                    target_critics[m].set_weights(tc_new_weights)
+                actor_grad_list.append([])
+                critic_grad_list.append([])
             
-            # apply FL aggregation method, and reapply gradients to models
-            if conf.fed_enabled:
-                if False not in rbuffers_filled: # ensure rbuffers have filled                    
-                    actor_avg_grads = fed_server.get_avg_grads(actor_grad_list)
-                    critic_avg_grads = fed_server.get_avg_grads(critic_grad_list)
-                    for m in range(num_models):
-                        critic_optimizers[m].apply_gradients(zip(critic_avg_grads, critics[m].trainable_variables))
-                        actor_optimizers[m].apply_gradients(zip(actor_avg_grads, actors[m].trainable_variables))
+            all_actor_grad_list.append(actor_grad_list)
+            all_critic_grad_list.append(critic_grad_list)
+
+    assert len(set(all_num_actions)) == 1 # make sure the action and state spaces are identical across the platoons
+    assert len(set(all_num_states)) == 1
+
+    num_actions = all_num_actions[0]
+    num_states = all_num_states[0]
+    actions = np.zeros((num_platoons, num_models, num_actions)) 
+
+    for ep in range(conf.number_of_episodes):
+        fed_mask = conf.fed_enabled and (ep % conf.fed_update_count) == 0 and ep <= conf.fed_cutoff_episode
+        if fed_mask:
+            log.info(f"Applying federated averaging at episode {ep} w/ delay {conf.fed_update_delay}s (every {conf.fed_update_delay_steps} steps).")
+        
+        if conf.fed_enabled and ep == conf.fed_cutoff_episode + 1:
+            log.info(f"Turned off federated learning as cutoff ratio [{conf.fed_cutoff_ratio}] ({conf.fed_cutoff_episode} episodes) passed at ep [{ep}]")
+
+        all_prev_states = []
+        all_episodic_reward_counters = []
+        for p in range(num_platoons): # reset environments and episodic reward counters
+            all_prev_states.append(all_envs[p].reset())
+            all_episodic_reward_counters.append(np.array([0]*num_models,  dtype=np.float32))
+
+        for i in range(conf.steps_per_episode):
+            all_states = []
+            all_rewards = []
+            all_terminals = []
+            for p in range(num_platoons):    
+                if conf.show_env:
+                    all_envs[p].render()
+                
+                for m in range(num_models): # iterate the list of actors here... passing in single state or concatanated for centrlz
+                    tf_prev_state = tf.expand_dims(tf.convert_to_tensor(all_prev_states[p][m]), 0)
+                    
+                    actions[p][m] = ddpgagent.policy(all_actors[p][m](tf_prev_state), all_ou_objects[p][m], low_bound, high_bound)[0]
+
+                states, rewards, terminal = all_envs[p].step(actions[p].flatten(), util.get_random_val(conf.rand_gen, 
+                                                                                conf.reset_max_u, 
+                                                                                std_dev=conf.reset_max_u, 
+                                                                                config=conf))
+                all_states.append(states)
+                all_rewards.append(rewards)
+                all_terminals.append(terminal)
+
+            for p in range(num_platoons):
+                for m in range(num_models):
+                    all_rbuffers[p][m].add((all_prev_states[p][m], 
+                                            actions[p][m], 
+                                            all_rewards[p][m], 
+                                            all_states[p][m]))
+
+                    all_episodic_reward_counters[p][m] += all_rewards[p][m]
+                    if all_rbuffers[p][m].buffer_counter > conf.batch_size: # first fill the buffer to the batch size   
+                        all_rbuffers_filled[p][m] = True
+                        # train and update the actor critics
+                        critic_grad, actor_grad = learn(conf, all_rbuffers[p][m], all_actors[p][m], all_critics[p][m], 
+                                                        all_target_actors[p][m], all_target_critics[p][m])
+
+                        # append gradients for avg'ing if federated enabled
+                        if conf.fed_method == conf.interfrl:
+                            all_actor_grad_list[m][p] = actor_grad
+                            all_critic_grad_list[m][p] = critic_grad
+
+                        elif conf.fed_method == conf.intrafrl:
+                            all_actor_grad_list[p][m] = actor_grad
+                            all_critic_grad_list[p][m] = critic_grad
+
+                        all_critic_optimizers[p][m].apply_gradients(zip(critic_grad, all_critics[p][m].trainable_variables))
+                        all_actor_optimizers[p][m].apply_gradients(zip(actor_grad, all_actors[p][m].trainable_variables))
 
                         # update the target networks
-                        tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, target_critics[m].weights, critics[m].weights, target_actors[m].weights, actors[m].weights)
-                        target_actors[m].set_weights(ta_new_weights)
-                        target_critics[m].set_weights(tc_new_weights)
+                        tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, all_target_critics[p][m].weights, all_critics[p][m].weights, all_target_actors[p][m].weights, all_actors[p][m].weights)
+                        all_target_actors[p][m].set_weights(ta_new_weights)
+                        all_target_critics[p][m].set_weights(tc_new_weights)
+
+            # apply FL aggregation method, and reapply gradients to models
+            if fed_mask and (i % conf.fed_update_delay_steps) == 0:
+                log.info(f"Applying FRL at step {i}")
+                for p in range(num_platoons):
+                    all_rbuffers_are_filled = True
+                    if False in all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
+                        all_rbuffers_are_filled = False
+                        break
                 
-            if terminal:
+                if all_rbuffers_are_filled:
+                    actor_avg_grads = fed_server.get_avg_grads(all_actor_grad_list)
+                    critic_avg_grads = fed_server.get_avg_grads(all_critic_grad_list)
+                    for p in range(num_platoons):
+                        for m in range(num_models):
+                            if conf.fed_method == conf.interfrl:
+                                all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[m], all_actors[p][m].trainable_variables))
+                                all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[m], all_critics[p][m].trainable_variables))
+                                
+                            elif conf.fed_method == conf.intrafrl:
+                                all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[p], all_actors[p][m].trainable_variables))
+                                all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[p], all_critics[p][m].trainable_variables))
+
+                            # update the target networks
+                            tc_new_weights, ta_new_weights = ddpgagent.update_target(conf.tau, all_target_critics[p][m].weights, all_critics[p][m].weights, all_target_actors[p][m].weights, all_actors[p][m].weights)
+                            all_target_actors[p][m].set_weights(ta_new_weights)
+                            all_target_critics[p][m].set_weights(tc_new_weights)
+                
+            if True in all_terminals: # break if any of the platoons have failed
                 break
-
-            prev_states = states
+            
+            all_prev_states = all_states
 
         print("")
+        for p in range(num_platoons):
+            for m in range(num_models):
+                all_ep_reward_lists[p][m].append(all_episodic_reward_counters[p][m])
+
+                avg_reward = np.mean(all_ep_reward_lists[p][m][-40:])
+                log.info("Platoon {} Model {} : Episode * {} of {} * Avg Reward is ==> {}".format(p+1, m+1, ep, conf.number_of_episodes, avg_reward))
+                all_avg_reward_lists[p][m].append(avg_reward)
+        print("")
+
+    for p in range(num_platoons):
+        plt.figure()
         for m in range(num_models):
-            ep_reward_lists[m].append(episodic_reward_counters[m])
+            tag = (p+1, m+1)
+            all_actors[p][m].save(os.path.join(base_dir, conf.actor_fname % tag))
+            tf.keras.utils.plot_model(all_actors[p][m], to_file=os.path.join(base_dir, conf.actor_picname % tag), show_shapes=True)
 
-            avg_reward = np.mean(ep_reward_lists[m][-40:])
-            log.info("Model {} : Episode * {} of {} * Avg Reward is ==> {}".format(m+1, ep, conf.number_of_episodes, avg_reward))
-            avg_reward_lists[m].append(avg_reward)
-        print("")
+            all_critics[p][m].save(os.path.join(base_dir, conf.critic_fname % tag))
+            tf.keras.utils.plot_model(all_critics[p][m], to_file=os.path.join(base_dir, conf.critic_picname % tag), show_shapes=True)
 
-    plt.figure()
-    for m in range(num_models):
-        tag = f"{m+1}"
-        actors[m].save(os.path.join(base_dir, conf.actor_fname % (tag)))
-        tf.keras.utils.plot_model(actors[m], to_file=os.path.join(base_dir, conf.actor_picname % (tag)), show_shapes=True)
+            all_target_actors[p][m].save(os.path.join(base_dir, conf.t_actor_fname % tag))
+            tf.keras.utils.plot_model(all_target_actors[p][m], to_file=os.path.join(base_dir, conf.t_actor_picname % tag), show_shapes=True)
 
-        critics[m].save(os.path.join(base_dir, conf.critic_fname % (tag)))
-        tf.keras.utils.plot_model(critics[m], to_file=os.path.join(base_dir, conf.critic_picname % (tag)), show_shapes=True)
+            all_target_critics[p][m].save(os.path.join(base_dir, conf.t_critic_fname % tag))
+            tf.keras.utils.plot_model(all_target_critics[p][m], to_file=os.path.join(base_dir, conf.t_critic_picname % tag), show_shapes=True)
+    
+            plt.plot(all_avg_reward_lists[p][m], label=f"Platoon {p+1} Vehicle {m+1}")
 
-        target_actors[m].save(os.path.join(base_dir, conf.t_actor_fname % (tag)))
-        tf.keras.utils.plot_model(target_actors[m], to_file=os.path.join(base_dir, conf.t_actor_picname % (tag)), show_shapes=True)
+        plt.xlabel("Episode")
+        plt.ylabel("Average Epsiodic Reward")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(base_dir, conf.fig_path % (p+1)))
 
-        target_critics[m].save(os.path.join(base_dir, conf.t_critic_fname % (tag)))
-        tf.keras.utils.plot_model(target_critics[m], to_file=os.path.join(base_dir, conf.t_critic_picname % (tag)), show_shapes=True)
- 
-        plt.plot(avg_reward_lists[m], label=f"Model {tag}")
-
-    plt.xlabel("Episode")
-    plt.ylabel("Average Epsiodic Reward")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(base_dir, conf.fig_path))
-
-    conf.pl_rew_for_simulation = evaluator.run(conf=conf, actors=actors, path_timestamp=base_dir, out='save') / conf.re_scalar
+        conf.pl_rews_for_simulations.append(evaluator.run(conf=conf, actors=all_actors[p], path_timestamp=base_dir, out='save', pl_idx=p+1) / conf.re_scalar)
+    
+    conf.pl_rew_for_simulation = np.average(conf.pl_rews_for_simulations)
     util.config_writer(os.path.join(base_dir, conf.param_path), conf)

@@ -42,7 +42,28 @@ def get_figure_str(fig_width, fig_path, fig_label, fig_caption):
         """ % (fig_caption, fig_width, fig_path, fig_label)
     return figure
 
-def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index_col, conf_drop_cols, report_timestamp, fig_params, fig_width, param_dct):
+def generate_fig_params(experiment_dir, conf_fname):
+    conf = util.config_loader(os.path.join(experiment_dir, conf_fname))
+    fig_params = [{"name" : conf.actor_picname % (1, 1),
+            "width" : 0.5,
+            "caption" : "Actor network model for experiment %s"},
+            {"name" : conf.critic_picname % (1, 1),
+            "width" : 0.6,
+            "caption" : "Critic network model for experiment %s"}
+    ]
+
+    for p in range(conf.num_platoons):
+        fig_params.append( {"name" : conf.fig_path % (p+1),
+                "width" : 0.6,
+                "caption" : f"Platoon {p+1} reward curve for experiment %s"}
+                )
+        fig_params.append({"name" : f"res_guassian{conf.pl_tag}.png" % (p+1),
+                "width" : 0.4,
+                "caption" : f"Platoon {p+1} simulation for experiment %s"})
+    
+    return fig_params
+
+def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index_col, conf_drop_cols, report_timestamp, fig_width, param_dct):
     """Generates a latex report body
 
     Args:
@@ -92,6 +113,9 @@ def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index
             f.write('\section{Experiment %s}\n' % (latexify_dir_name))
             report_exp_dir = os.path.join(report_dir, dir_name)
             os.mkdir(report_exp_dir)
+
+            fig_params = generate_fig_params(dir_, conf_fname)
+
             for fig_map in fig_params:
                 fig_name = fig_map['name']
                 fig_src = os.path.join(dir_, fig_name)
