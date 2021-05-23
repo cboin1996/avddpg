@@ -39,7 +39,7 @@ class Config():
         self.pl_leader_tau = 0.5
         self.exact = 'exact'
         self.euler = 'euler'
-        self.method = self.euler
+        self.method = self.exact
 
         self.timegap = 1.25
         self.dyn_coeff = 0.5
@@ -49,9 +49,13 @@ class Config():
         self.max_ep = 20
         self.max_ev = 10
         
-        self.reset_ep_max = 1.5
-        self.reset_max_ev = 1.5
+        self.reset_ep_max = 1.5 # max position error upon environment reset
+        self.reset_max_ev = 1.5 # max velocity error upon environment reset
         self.reset_max_a = 0.05 # max accel of a vehicle upon reset
+
+        self.reset_ep_eval_max = 1 # the position error upon initialization of the evaluator
+        self.reset_ev_eval_max = 1 # the position error upon initialization of the evaluator
+        self.reset_a_eval_max = 0.03 # the position error upon initialization of the evaluator
 
         self.action_high =2.5
         self.action_low = -2.5
@@ -61,13 +65,13 @@ class Config():
 
         """Trainer"""
         self.can_terminate = True
-        self.random_seed = 4
+        self.random_seed = 1
         self.evaluation_seed = 6
 
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
-        self.rand_states = False # whether or not to use random initial states for each environment reset.
+        self.rand_states = True # whether or not to use random initial states for each environment reset.
 
         self.total_time_steps = 1000000
 
@@ -163,6 +167,9 @@ class Config():
                             "reset_ep_max" : "Maximum position error in followers upon environment reset",
                             "reset_max_ev" : "Maximum velocity error in followers upon environment reset",
                             "reset_max_a" : "Maximum acceleration upon environment reset",
+                            "reset_ep_eval_max" : "Position error upon initialization of the evaluator",
+                            "reset_ev_eval_max" : "Velocity error upon initialization of the evaluator",
+                            "reset_a_eval_max" : "Accel error upon initialization of the evaluator",
                             "action_high" : "Upper bound on action space for the environment",
                             "action_low" : "Lower bound on action space for the environment",
                             "re_scalar" : "Reward scaling coefficient",

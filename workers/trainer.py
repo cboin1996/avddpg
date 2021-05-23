@@ -50,7 +50,14 @@ def learn(config, rbuffer, actor_model, critic_model,
     return critic_grad, actor_grad
 
 
-def run(base_dir, timestamp):
+def run(base_dir, timestamp, debug_enabled):
+    """
+    Run the trainer.
+    Arguments:
+        base_dir : the root folder for the DL experiment
+        timestamp : the timestamp for the experiment
+        tr_debug : whether to train in debug mode or not
+    """
     log.info("=== Initializing Trainer ===")
     conf = config.Config()
     conf.timestamp = str(timestamp)
@@ -234,7 +241,12 @@ def run(base_dir, timestamp):
                 states, rewards, terminal = all_envs[p].step(actions[p].flatten(), util.get_random_val(conf.rand_gen, 
                                                                                 conf.reset_max_u, 
                                                                                 std_dev=conf.reset_max_u, 
-                                                                                config=conf))
+                                                                                config=conf), debug_mode=debug_enabled)
+                if debug_enabled:
+                    user_input = input("Advance to the next timestep 'q' quits: ")
+                    if user_input == 'q':
+                        return
+
                 all_states.append(states)
                 all_rewards.append(rewards)
                 all_terminals.append(terminal)

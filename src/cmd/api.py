@@ -6,7 +6,20 @@ def set_args_to_config(args, config: config.Config):
     """
     if hasattr(args, "seed"):
         config.random_seed = args.seed
-    
+    elif hasattr(args, "method"):
+        config.method = args.method
+    elif hasattr(args, "rand_states"):
+        config.rand_states = args.rand_states
+    elif hasattr(args, "render"):
+        config.show_env = args.render
+    elif hasattr(args, "fed_method"):
+        config.fed_method = args.rand_states
+    elif hasattr(args, "fed_update_count"):
+        config.fed_update_count = args.fed_update_count
+    elif hasattr(args, "fed_cutoff_ratio"):
+        config.fed_cutoff_ratio = args.fed_cutoff_ratio
+    elif hasattr(args, "fed_update_delay"):
+        config.fed_update_delay = args.fed_update_delay
     
     return config
 def get_cmdl_args(args: list, description: str, config: config.Config):
@@ -23,6 +36,8 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
         help="the seed globally set across the experiment. If not set, will take whatever is in src/config.py")
     add_tr.add_argument("--method", choices=[config.exact, config.euler], help="Descretization method.")
     add_tr.add_argument("--rand_states", type=bool, help="whether to initialize the vehicle environments with random states or what is in config.py.")
+    add_tr.add_argument("--render", type=bool, help="Whether to output the environment states to console.")
+    add_tr.add_argument("--tr_debug", type=bool, help="Whether to enable debug mode for the trainer.")
 
     add_tr.add_argument("--fed_method", choices=[config.interfrl, config.intrafrl, config.normal])    
     add_tr.add_argument("--fed_update_count", type=int, help="number of episodes between federated averaging updates")
