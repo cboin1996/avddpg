@@ -34,7 +34,7 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, s
     else:
         evaluation_seed = None
 
-    env = environment.Platoon(conf.pl_size, conf, rand_states=False) # do not use random states here, for consistency across evaluation sessions
+    env = environment.Platoon(conf.pl_size, conf, pl_idx, rand_states=False) # do not use random states here, for consistency across evaluation sessions
     num_models = env.num_models
     if actors is None:
         actors = []

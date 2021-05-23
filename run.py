@@ -24,7 +24,6 @@ def run(args):
     physical_devices = tf.config.list_physical_devices('GPU') 
     conf = config.Config()
     args, conf = api.get_cmdl_args(args[1:], "Autonomous Vehicle Platoon with DDPG.", conf)
-    print(conf)
     if len(physical_devices) > 0:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
 

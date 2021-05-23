@@ -51,6 +51,7 @@ def learn(config, rbuffer, actor_model, critic_model,
 
 
 def run(base_dir, timestamp):
+    log.info("=== Initializing Trainer ===")
     conf = config.Config()
     conf.timestamp = str(timestamp)
     if conf.fed_enabled:
@@ -82,7 +83,7 @@ def run(base_dir, timestamp):
     
     for p in range(num_platoons):
         log.info(f"--- Platoon {p+1} summary ---")
-        env = environment.Platoon(conf.pl_size, conf, rand_states=conf.rand_states)
+        env = environment.Platoon(conf.pl_size, conf, p, rand_states=conf.rand_states)
         all_envs.append(env)
 
         all_num_states.append(env.num_states)
