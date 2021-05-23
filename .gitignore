@@ -10,7 +10,7 @@ venv
 
 # compute canada files
 jout_files
-launch_graham.sh
+launch_configs
 
 # General
 __pycache__
