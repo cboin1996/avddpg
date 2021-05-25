@@ -61,7 +61,7 @@ class Config():
         self.action_low = -2.5
 
         self.re_scalar = 0.1 # reward scale
-        self.terminal_reward = 1000000
+        self.terminal_reward = 1000
 
         """Trainer"""
         self.can_terminate = True
@@ -73,7 +73,7 @@ class Config():
         self.rand_gen = self.normal # which type of random numbers to use.
         self.rand_states = True # whether or not to use random initial states for each environment reset.
 
-        self.total_time_steps = 1000
+        self.total_time_steps = 1000000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
