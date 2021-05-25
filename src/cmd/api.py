@@ -4,7 +4,6 @@ from src import config
 def set_args_to_config(args, config: config.Config):
     """Set method for writing command line arguments to the configuration class
     """
-    print(args.method)
     if hasattr(args, "seed") and args.seed is not None: # redundnat statement keeps 3.6 compatibile with 3.7.8
         config.random_seed = args.seed
     if hasattr(args, "method") and args.method is not None:

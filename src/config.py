@@ -61,7 +61,7 @@ class Config():
         self.action_low = -2.5
 
         self.re_scalar = 0.1 # reward scale
-        self.terminal_reward = 1000
+        self.terminal_reward = 1000000
 
         """Trainer"""
         self.can_terminate = True
