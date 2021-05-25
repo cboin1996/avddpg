@@ -50,16 +50,16 @@ def learn(config, rbuffer, actor_model, critic_model,
     return critic_grad, actor_grad
 
 
-def run(base_dir, timestamp, debug_enabled):
+def run(base_dir, timestamp, debug_enabled, conf):
     """
     Run the trainer.
     Arguments:
         base_dir : the root folder for the DL experiment
         timestamp : the timestamp for the experiment
         tr_debug : whether to train in debug mode or not
+        conf : the configuration class config.Config()
     """
     log.info("=== Initializing Trainer ===")
-    conf = config.Config()
     conf.timestamp = str(timestamp)
     if conf.fed_enabled:
         fed_server = federated.Server('ddpg')

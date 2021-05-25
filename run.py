@@ -50,7 +50,7 @@ def run(args):
 
         setup_global_logging_stream(conf)
 
-        trainer.run(base_dir, timestamp, debug_enabled=args.tr_debug)
+        trainer.run(base_dir, timestamp, debug_enabled=args.tr_debug, conf=conf)
     elif args.mode == 'pid':
         controller.run()
     elif args.mode == 'esim': # run eval with that of conf.json
