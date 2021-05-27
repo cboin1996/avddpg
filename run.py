@@ -24,15 +24,17 @@ def run(args):
     physical_devices = tf.config.list_physical_devices('GPU') 
     conf = config.Config()
     args, conf = api.get_cmdl_args(args[1:], "Autonomous Vehicle Platoon with DDPG.", conf)
+
+    # set the seed for everything
+    os.environ['PYTHONHASHSEED']=str(conf.random_seed)
+    random.seed(conf.random_seed)
+    np.random.seed(conf.random_seed)
+    tf.random.set_seed(conf.random_seed)
+    
     if len(physical_devices) > 0:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
     util.inititialize_dirs(conf)
-    # set the seed for everything
-    np.random.seed(conf.random_seed)
-    tf.random.set_seed(conf.random_seed)
-    os.environ['PYTHONHASHSEED']=str(conf.random_seed)
-    random.seed(conf.random_seed)
 
     root_dir = sys.path[0]
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")

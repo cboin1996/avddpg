@@ -27,10 +27,10 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, s
     
     if seed:
         evaluation_seed = conf.evaluation_seed
-        np.random.seed(conf.evaluation_seed)
-        tf.random.set_seed(conf.evaluation_seed)
         os.environ['PYTHONHASHSEED']=str(conf.evaluation_seed)
         random.seed(conf.evaluation_seed)
+        np.random.seed(conf.evaluation_seed)
+        tf.random.set_seed(conf.evaluation_seed)
     else:
         evaluation_seed = None
 
