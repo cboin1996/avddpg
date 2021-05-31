@@ -311,9 +311,16 @@ class Vehicle:
             self.print_hyps(output="print")
             print("--- Evolution Equation Timestep %s ---" % (self.step_count))
             print("\tA Matrix: ", self.A)
+            print("\tB Matrix: ", self.B)
+            print("\tC Matrix: ", self.C)
             print("\tx before evolution: ", self.x)
-
-        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
+            print("--- Reward Equation ---")
+            print("\tx[0]=epi: ", self.x[0])
+            print("\ta: ", self.a)
+            print("\tx[1]=evi: ", self.x[1])
+            print("\tb: ", self.b)
+            print("\tu: ", self.u)
+            print("\texog: ", self.exog)
 
         if abs(self.x[0]) > self.config.max_ep and self.config.can_terminate:
             terminal=True
@@ -321,18 +328,13 @@ class Vehicle:
         else:
             self.reward = (self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(self.u)**2)  * self.config.re_scalar
 
+        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
+
+
+
         if debug_mode:
-            print("\tB Matrix: ", self.B)
-            print("\tu: ", self.u)
-            print("\tC Matrix: ", self.C)
-            print("\texog: ", self.exog)
             print("\tx after evolution: ", self.x)
-            print("--- Reward Equation ---")
-            print("\tx[0]=epi: ", self.x[0])
-            print("\ta: ", self.a)
-            print("\tx[1]=evi: ", self.x[1])
-            print("\tb: ", self.b)
-            print("\tu: ", self.u)
+
 
 
         return self.x[0:self.num_states], -self.reward, terminal # return only the elements that correspond to the state size.
