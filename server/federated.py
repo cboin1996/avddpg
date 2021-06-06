@@ -99,9 +99,10 @@ if __name__=="__main__":
             fed_proc_grads[m][p] = grads
     fed_avg = server.get_avg_grads(fed_proc_grads, debug=True)
     logger.info(f"Input gradients: {fed_proc_grads}")
-    for p in range(num_platoons):
-        for m in range(num_models):
-            logger.info(f"Pl [{p}] m [{m}] grads: {fed_avg[m]}")
+    logger.info(f"Output gradients: {fed_avg}")
+    # for p in range(num_platoons):
+    #     for m in range(num_models):
+    #         logger.info(f"Pl [{p}] m [{m}] grads: {fed_avg[m]}")
 
 
     # print(np.stack(grad_np, axis=1))
