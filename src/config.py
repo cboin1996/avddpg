@@ -23,9 +23,9 @@ class Config():
         self.fed_method = self.nofrl
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.interfrl or self.fed_method == self.intrafrl) and (self.framework == self.dcntrl)
-        self.fed_update_count = 10 # number of episodes between federated averaging updates
-        self.fed_cutoff_ratio = 0.65 # the ratio to toral number of episodes at which FRL is cutoff
-        self.fed_update_delay = 15 # the time in second between updates during a training episode for FRL.
+        self.fed_update_count = 1 # number of episodes between federated averaging updates
+        self.fed_cutoff_ratio = 1.0 # the ratio to toral number of episodes at which FRL is cutoff
+        self.fed_update_delay = 0.1 # the time in second between updates during a training episode for FRL.
         self.res_dir = self.res_dir
         self.report_dir = "reports"
         self.param_path = self.param_path
@@ -49,9 +49,9 @@ class Config():
         self.max_ep = 20
         self.max_ev = 10
         
-        self.reset_ep_max = 1.5 # max position error upon environment reset
-        self.reset_max_ev = 1.5 # max velocity error upon environment reset
-        self.reset_max_a = 0.05 # max accel of a vehicle upon reset
+        self.reset_ep_max = 1 # max position error upon environment reset
+        self.reset_max_ev = 1 # max velocity error upon environment reset
+        self.reset_max_a = 0.03 # max accel of a vehicle upon reset
 
         self.reset_ep_eval_max = 1 # the position error upon initialization of the evaluator
         self.reset_ev_eval_max = 1 # the position error upon initialization of the evaluator
@@ -71,9 +71,9 @@ class Config():
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
-        self.rand_states = True # whether or not to use random initial states for each environment reset.
+        self.rand_states = False # whether or not to use random initial states for each environment reset.
 
-        self.total_time_steps = 1000000
+        self.total_time_steps = 1000
 
         self.sample_rate = 0.1
         self.episode_sim_time = 60 # simulation time for a training episode
