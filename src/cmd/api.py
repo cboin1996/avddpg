@@ -12,6 +12,10 @@ def set_args_to_config(args, config: config.Config):
         config.rand_states = args.rand_states
     if hasattr(args, "render") and args.render is not None:
         config.show_env = args.render
+    if hasattr(args, "pl_num") and args.pl_num is not None:
+        config.num_platoons = args.pl_num
+    if hasattr(args, "pl_size") and args.pl_size is not None:
+        config.pl_size = args.pl_size
     if hasattr(args, "fed_method") and args.fed_method is not None:
         config.fed_method = args.fed_method
     if hasattr(args, "fed_update_count") and args.fed_update_count is not None:
@@ -38,6 +42,9 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--rand_states", type=bool, help="whether to initialize the vehicle environments with random states or what is in config.py.")
     add_tr.add_argument("--render", type=bool, help="Whether to output the environment states to console.")
     add_tr.add_argument("--tr_debug", type=bool, help="Whether to enable debug mode for the trainer.")
+    add_tr.add_argument("--pl_num", type=int, help="How many platoons to simulate with.")
+    add_tr.add_argument("--pl_size", type=int, help="How many vehicles in each platoon.")
+
 
     add_tr.add_argument("--fed_method", choices=[config.interfrl, config.intrafrl, config.normal])    
     add_tr.add_argument("--fed_update_count", type=int, help="number of episodes between federated averaging updates")
