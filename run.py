@@ -37,7 +37,7 @@ def run(args):
     util.inititialize_dirs(conf)
 
     root_dir = sys.path[0]
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
 
     if args.mode == 'tr':
         base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}_{conf.framework}_{conf.fed_method}")

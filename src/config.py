@@ -49,13 +49,13 @@ class Config():
         self.max_ep = 20
         self.max_ev = 10
         
-        self.reset_ep_max = 1 # max position error upon environment reset
-        self.reset_max_ev = 1 # max velocity error upon environment reset
+        self.reset_ep_max = 1.5 # max position error upon environment reset
+        self.reset_max_ev = 1.5 # max velocity error upon environment reset
         self.reset_max_a = 0.03 # max accel of a vehicle upon reset
 
-        self.reset_ep_eval_max = 1 # the position error upon initialization of the evaluator
-        self.reset_ev_eval_max = 1 # the position error upon initialization of the evaluator
-        self.reset_a_eval_max = 0.03 # the position error upon initialization of the evaluator
+        self.reset_ep_eval_max = 0 # the position error upon initialization of the evaluator
+        self.reset_ev_eval_max = 0 # the position error upon initialization of the evaluator
+        self.reset_a_eval_max = 0 # the position error upon initialization of the evaluator
 
         self.action_high =2.5
         self.action_low = -2.5
