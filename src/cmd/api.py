@@ -48,8 +48,8 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
 
     add_tr.add_argument("--fed_method", choices=[config.interfrl, config.intrafrl, config.normal])    
     add_tr.add_argument("--fed_update_count", type=int, help="number of episodes between federated averaging updates")
-    add_tr.add_argument("--fed_cutoff_ratio", type=int, help="the ratio to toral number of episodes at which FRL is cutoff")
-    add_tr.add_argument("--fed_update_delay", type=int, help="the time in second between updates during a training episode for FRL.")
+    add_tr.add_argument("--fed_cutoff_ratio", type=float, help="the ratio to toral number of episodes at which FRL is cutoff")
+    add_tr.add_argument("--fed_update_delay", type=float, help="the time in second between updates during a training episode for FRL.")
 
 
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
