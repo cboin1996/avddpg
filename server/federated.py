@@ -8,10 +8,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Server:
-    def __init__(self, name):
+    def __init__(self, name, debug_enabled):
+        logger.info(f"Launching FRL Server: {name}")
         self.name = name
+        self.debug = debug_enabled
 
-    def get_avg_grads(self, system_grads, debug=False):
+    def get_avg_grads(self, system_grads):
         """
         Computes the average gradients of a system of models.. by averaging horizontally across system environments
         Args:                                                           system 1 model 1               system X model 1
@@ -36,13 +38,13 @@ class Server:
 
         """
         system_avg_grads = []
-        if debug:
+        if self.debug:
             logger.info(f"System Gradients: {system_grads}")
 
         for p in range(len(system_grads)):
             multi_model_gradients_stacked = np.stack(system_grads[p], axis=1)  # stacks the gradients along the first axis..
                                                                                #s.t. each model layer's grads are now adjacent
-            if debug:
+            if self.debug:
                 logger.info(f"")
                 logger.info(f"System gradients after stacking layers: {multi_model_gradients_stacked}")
             averaged_grads = []
@@ -50,14 +52,14 @@ class Server:
             for i in range(len(multi_model_gradients_stacked)):
                 stacked_layer_tensors = tf.stack(multi_model_gradients_stacked[i], axis=0) # stack all the layers for the models into single tensor
 
-                if debug:
+                if self.debug:
                     logger.info(f"All layer [{i}] gradients: {stacked_layer_tensors}")
                     logger.info(f"Layer [{i}] means: {tf.reduce_mean(stacked_layer_tensors, axis=0)}\n")
                     
                 averaged_grads.append(tf.reduce_mean(stacked_layer_tensors, axis=0)) # compute the mean across model grads per layer
             system_avg_grads.append(averaged_grads)
         
-        if debug:
+        if self.debug:
             logger.info(f"System grads after averaging: {system_avg_grads}")
         return system_avg_grads
     

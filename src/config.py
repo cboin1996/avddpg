@@ -17,8 +17,8 @@ class Config():
         self.dcntrl = "decentralized"
         self.cntrl = "centralized"
         """ Federated Learning"""
-        self.interfrl = "inter federated" # averages across the same environments from multiple platoons
-        self.intrafrl = "intra federated" # averages all envirnoments within a platoon, no sharing across platoons
+        self.interfrl = "interfrl" # averages across the same environments from multiple platoons
+        self.intrafrl = "intrafrl" # averages all envirnoments within a platoon, no sharing across platoons
         self.nofrl = "normal"
         self.fed_method = self.nofrl
         self.framework = self.dcntrl

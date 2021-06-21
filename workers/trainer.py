@@ -61,8 +61,9 @@ def run(base_dir, timestamp, debug_enabled, conf):
     """
     log.info("=== Initializing Trainer ===")
     conf.timestamp = str(timestamp)
+    conf.fed_enabled = (conf.fed_method == conf.interfrl or conf.fed_method == conf.intrafrl) and (conf.framework == conf.dcntrl)
     if conf.fed_enabled:
-        fed_server = federated.Server('ddpg')
+        fed_server = federated.Server('AVDDPG', debug_enabled)
 
     all_envs = []
     all_ou_objects = []
@@ -284,7 +285,8 @@ def run(base_dir, timestamp, debug_enabled, conf):
 
             # apply FL aggregation method, and reapply gradients to models
             if fed_mask and (i % conf.fed_update_delay_steps) == 0:
-                log.info(f"Applying FRL at step {i}")
+                if debug_enabled:
+                    log.info(f"Applying FRL at step {i}")
                 for p in range(num_platoons):
                     all_rbuffers_are_filled = True
                     if False in all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
