@@ -51,11 +51,11 @@ class Config():
         
         self.reset_ep_max = 1.5 # max position error upon environment reset
         self.reset_max_ev = 1.5 # max velocity error upon environment reset
-        self.reset_max_a = 0.03 # max accel of a vehicle upon reset
+        self.reset_max_a = 0.05 # max accel of a vehicle upon reset
 
-        self.reset_ep_eval_max = 0 # the position error upon initialization of the evaluator
-        self.reset_ev_eval_max = 0 # the position error upon initialization of the evaluator
-        self.reset_a_eval_max = 0 # the position error upon initialization of the evaluator
+        self.reset_ep_eval_max = 1 # the position error upon initialization of the evaluator
+        self.reset_ev_eval_max = 1 # the position error upon initialization of the evaluator
+        self.reset_a_eval_max = 0.03 # the position error upon initialization of the evaluator
 
         self.action_high =2.5
         self.action_low = -2.5
@@ -71,7 +71,7 @@ class Config():
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
-        self.rand_states = False # whether or not to use random initial states for each environment reset.
+        self.rand_states = True # whether or not to use random initial states for each environment reset.
 
         self.total_time_steps = 1000000
 
