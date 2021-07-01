@@ -284,7 +284,7 @@ def run(base_dir, timestamp, debug_enabled, conf):
                         all_target_critics[p][m].set_weights(tc_new_weights)
 
             # apply FL aggregation method, and reapply gradients to models
-            if fed_mask and (i % conf.fed_update_delay_steps) == 0:
+            if fed_mask and ((i % conf.fed_update_delay_steps) == 0):
                 if debug_enabled:
                     log.info(f"Applying FRL at step {i}")
                 for p in range(num_platoons):
