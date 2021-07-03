@@ -22,6 +22,8 @@ def set_args_to_config(args, config: config.Config):
         config.fed_update_count = args.fed_update_count
     if hasattr(args, "fed_cutoff_ratio") and args.fed_cutoff_ratio is not None:
         config.fed_cutoff_ratio = args.fed_cutoff_ratio
+        config.fed_cutoff_episode  = int(config.fed_cutoff_ratio * config.number_of_episodes)
+
     if hasattr(args, "fed_update_delay") and args.fed_update_delay is not None:
         config.fed_update_delay = args.fed_update_delay
         config.fed_update_delay_steps = int(config.fed_update_delay/config.sample_rate)

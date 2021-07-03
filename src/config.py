@@ -43,7 +43,7 @@ class Config():
 
         self.timegap = 1.25
         self.dyn_coeff = 0.5
-        self.reward_ev_coeff = 1
+        self.reward_ev_coeff = 0.10
         self.reward_u_coeff = 0.10
 
         self.max_ep = 20
