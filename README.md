@@ -1,4 +1,4 @@
-# Autonomous Vehicle Reinforcement Learning using DDPG Algorithm v0.5
+# Autonomous Vehicle Reinforcement Learning using DDPG Algorithm v0.7
 
 v0.1 - Working model for model A and model B
 
@@ -9,3 +9,7 @@ v0.3 - Multi vehicle centralized and decentralized approach
 v0.4 - Multi vehicle and multi platoon support w/ inter/intra FRL
 
 v0.5 - Patched reporter for inter/intra FRL experiments, added tunability of critic actor layer
+ 
+v0.6 - Implemented debug api, made improvements to command line interface
+
+v0.7 - Latest in development
