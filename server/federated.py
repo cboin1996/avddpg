@@ -3,9 +3,15 @@ import logging
 import tensorflow as tf
 import numpy as np
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class Server:
-    def __init__(self, name):
+    def __init__(self, name, debug_enabled):
+        logger.info(f"Launching FRL Server: {name}")
         self.name = name
+        self.debug = debug_enabled
 
     def get_avg_grads(self, system_grads):
         """
@@ -32,28 +38,44 @@ class Server:
 
         """
         system_avg_grads = []
+        if self.debug:
+            logger.info(f"System Gradients: {system_grads}")
+
         for p in range(len(system_grads)):
             multi_model_gradients_stacked = np.stack(system_grads[p], axis=1)  # stacks the gradients along the first axis..
                                                                                #s.t. each model layer's grads are now adjacent
-            # print("Stacked nicely: \n", multi_model_gradients_stacked)
+            if self.debug:
+                logger.info(f"")
+                logger.info(f"System gradients after stacking layers: {multi_model_gradients_stacked}")
             averaged_grads = []
+
             for i in range(len(multi_model_gradients_stacked)):
                 stacked_layer_tensors = tf.stack(multi_model_gradients_stacked[i], axis=0) # stack all the layers for the models into single tensor
-                averaged_grads.append(tf.reduce_mean(stacked_layer_tensors, axis=0)) # compute the mean across model grads per layer
 
+                if self.debug:
+                    logger.info(f"All layer [{i}] gradients: {stacked_layer_tensors}")
+                    logger.info(f"Layer [{i}] means: {tf.reduce_mean(stacked_layer_tensors, axis=0)}\n")
+                    
+                averaged_grads.append(tf.reduce_mean(stacked_layer_tensors, axis=0)) # compute the mean across model grads per layer
             system_avg_grads.append(averaged_grads)
         
+        if self.debug:
+            logger.info(f"System grads after averaging: {system_avg_grads}")
         return system_avg_grads
     
 
 if __name__=="__main__":
+    log_format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+    log_date_fmt = "%y-%m-%d %H:%M:%S"
+    logging.basicConfig(level=logging.INFO,
+                            format=log_format,
+                            datefmt=log_date_fmt)
+    console = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(log_format)
+    console.setFormatter(formatter)
+
     server = Server("fed")
-    grads_list = [
-        [[[1,2,3], [1,2], [3,4]],
-        [[7,8,9], [5,6], [7,8]]],
-        [[[10,11,12], [9,10], [11,12]],
-        [[13,14,15], [13,14], [15,16]]],
-    ]
+
     num_models = 1
     num_platoons = 2
     pl1_model1 = [np.array([1,2,3]), np.array([1,2]), np.array([3,4])]
@@ -77,13 +99,12 @@ if __name__=="__main__":
         for m in range(num_models):
             grads = grads_list[p][m]
             fed_proc_grads[m][p] = grads
-    fed_avg = server.get_avg_grads(fed_proc_grads)
-    print(fed_proc_grads)
-    print("")
-    print(fed_avg)
-    for p in range(num_platoons):
-        for m in range(num_models):
-            print(fed_avg[m])
+    fed_avg = server.get_avg_grads(fed_proc_grads, debug=True)
+    logger.info(f"Input gradients: {fed_proc_grads}")
+    logger.info(f"Output gradients: {fed_avg}")
+    # for p in range(num_platoons):
+    #     for m in range(num_models):
+    #         logger.info(f"Pl [{p}] m [{m}] grads: {fed_avg[m]}")
 
 
     # print(np.stack(grad_np, axis=1))

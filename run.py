@@ -1,8 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from agent import model, ddpgagent
 from workers import trainer, controller, evaluator
-from src import config, util, reporter
+from src import config, util, reporter, rand
 from src.cmd import api
 import os 
 import random
@@ -21,22 +20,21 @@ def setup_global_logging_stream(conf):
 
 
 def run(args):
-    physical_devices = tf.config.list_physical_devices('GPU') 
     conf = config.Config()
     args, conf = api.get_cmdl_args(args[1:], "Autonomous Vehicle Platoon with DDPG.", conf)
-    print(conf)
+
+    # set the seed for everything
+    rand.set_global_seed(conf.random_seed)
+
+    physical_devices = tf.config.list_physical_devices('GPU') 
+
     if len(physical_devices) > 0:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
     util.inititialize_dirs(conf)
-    # set the seed for everything
-    np.random.seed(conf.random_seed)
-    tf.random.set_seed(conf.random_seed)
-    os.environ['PYTHONHASHSEED']=str(conf.random_seed)
-    random.seed(conf.random_seed)
 
     root_dir = sys.path[0]
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
 
     if args.mode == 'tr':
         base_dir = os.path.join(sys.path[0], conf.res_dir, timestamp+f"_{conf.model}_seed{conf.random_seed}_{conf.framework}_{conf.fed_method}")
@@ -51,7 +49,7 @@ def run(args):
 
         setup_global_logging_stream(conf)
 
-        trainer.run(base_dir, timestamp)
+        trainer.run(base_dir, timestamp, debug_enabled=args.tr_debug, conf=conf)
     elif args.mode == 'pid':
         controller.run()
     elif args.mode == 'esim': # run eval with that of conf.json

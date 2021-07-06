@@ -50,11 +50,20 @@ def learn(config, rbuffer, actor_model, critic_model,
     return critic_grad, actor_grad
 
 
-def run(base_dir, timestamp):
-    conf = config.Config()
+def run(base_dir, timestamp, debug_enabled, conf):
+    """
+    Run the trainer.
+    Arguments:
+        base_dir : the root folder for the DL experiment
+        timestamp : the timestamp for the experiment
+        tr_debug : whether to train in debug mode or not
+        conf : the configuration class config.Config()
+    """
+    log.info("=== Initializing Trainer ===")
     conf.timestamp = str(timestamp)
+    conf.fed_enabled = (conf.fed_method == conf.interfrl or conf.fed_method == conf.intrafrl) and (conf.framework == conf.dcntrl)
     if conf.fed_enabled:
-        fed_server = federated.Server('ddpg')
+        fed_server = federated.Server('AVDDPG', debug_enabled)
 
     all_envs = []
     all_ou_objects = []
@@ -82,7 +91,7 @@ def run(base_dir, timestamp):
     
     for p in range(num_platoons):
         log.info(f"--- Platoon {p+1} summary ---")
-        env = environment.Platoon(conf.pl_size, conf, rand_states=conf.rand_states)
+        env = environment.Platoon(conf.pl_size, conf, p, rand_states=conf.rand_states)
         all_envs.append(env)
 
         all_num_states.append(env.num_states)
@@ -233,7 +242,12 @@ def run(base_dir, timestamp):
                 states, rewards, terminal = all_envs[p].step(actions[p].flatten(), util.get_random_val(conf.rand_gen, 
                                                                                 conf.reset_max_u, 
                                                                                 std_dev=conf.reset_max_u, 
-                                                                                config=conf))
+                                                                                config=conf), debug_mode=debug_enabled)
+                if debug_enabled:
+                    user_input = input("Advance to the next timestep 'q' quits: ")
+                    if user_input == 'q':
+                        return
+
                 all_states.append(states)
                 all_rewards.append(rewards)
                 all_terminals.append(terminal)
@@ -270,8 +284,9 @@ def run(base_dir, timestamp):
                         all_target_critics[p][m].set_weights(tc_new_weights)
 
             # apply FL aggregation method, and reapply gradients to models
-            if fed_mask and (i % conf.fed_update_delay_steps) == 0:
-                log.info(f"Applying FRL at step {i}")
+            if fed_mask and ((i % conf.fed_update_delay_steps) == 0):
+                if debug_enabled:
+                    log.info(f"Applying FRL at step {i}")
                 for p in range(num_platoons):
                     all_rbuffers_are_filled = True
                     if False in all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  

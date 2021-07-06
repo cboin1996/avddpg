@@ -1,9 +1,12 @@
 import random
 import numpy as np
 from src import config, util
+import logging
+
+log = logging.getLogger(__name__)
 
 class Platoon:
-    def __init__(self, length, config, rand_states=True):
+    def __init__(self, length, config, pl_idx, rand_states=True, evaluator_states_enabled=False):
         """Initialize the platoon
 
         Args:
@@ -12,6 +15,8 @@ class Platoon:
             config (Config): the global configuration class
             rand_states (Boolean) : whether the platoon will use random states, or the max values from the config on reset.
         """
+        self.pl_idx = pl_idx
+        log.info(f"=== INITIALIZING PLATOON {self.pl_idx} ===")
         self.config = config
         
         self.length = length
@@ -19,6 +24,8 @@ class Platoon:
         self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a, config=self.config)
 
         self.rand_states = rand_states
+        self.evaluator_states_enabled = evaluator_states_enabled
+
         self.state_lbs = {0: "ep", 1 : "ev", 2 : "a", 3 : "a-1"}
         self.exog_lbl = 'u'
         self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
@@ -47,10 +54,11 @@ class Platoon:
             if i == 0:
                 self.followers.append(Vehicle(i, self.config, self.pl_leader_tau, self.front_accel,
                                                 num_states=self.num_states,
-                                                num_actions=self.num_actions, rand_states=self.rand_states))
+                                                num_actions=self.num_actions, rand_states=self.rand_states, evaluator_states_enabled=self.evaluator_states_enabled))
             else:
                 self.followers.append(Vehicle(i, self.config, self.followers[i-1].tau, self.followers[i-1].x[2],
-                                                num_states=self.num_states, num_actions=self.num_actions, rand_states=self.rand_states)) # chain tau and accel in state
+                                                num_states=self.num_states, num_actions=self.num_actions, rand_states=self.rand_states, 
+                                                evaluator_states_enabled=self.evaluator_states_enabled)) # chain tau and accel in state
     
     def render(self):
         output = ""
@@ -78,10 +86,7 @@ class Platoon:
         for i, action in enumerate(actions):
             follower = self.followers[i]
 
-            if i == 0:                    
-                exog = self.front_u if leader_exog == None else leader_exog
-            else:
-                exog = self.followers[i-1].u 
+            exog = self.get_exogenous_info(i, leader_exog)
 
             f_state, f_reward, f_terminal = follower.step(action, exog, debug_mode)
             states.append(f_state)
@@ -96,7 +101,9 @@ class Platoon:
         return states, rewards, platoon_done
     
     def get_exogenous_info(self, idx, leader_exog):
-
+        """
+        Get the 'exogenous' information for the system. For 
+        'Model A' this would be the leading vehicle acceleration. For 'Model B' .. use leader control input 'u'"""
         if self.config.model == self.config.modelB:
             if idx == 0:                    
                 exog = self.front_u if leader_exog == None else leader_exog
@@ -164,7 +171,8 @@ class Vehicle:
                 C           (np.array) : system matrix
                 config      (Config)   : configuration class
     """
-    def __init__(self, idx, config: config.Config, tau_lead=None, a_lead = None, num_states = None, num_actions = None, rand_states=True):
+    def __init__(self, idx, config: config.Config, tau_lead=None, a_lead = None, num_states = None, num_actions = None, rand_states=True,
+        evaluator_states_enabled=True):
         """constructor - r, h, L and tau referenced from 
                          https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7146426/
                          a, b taken from https://www.merl.com/publications/docs/TR2019-142.pdf     
@@ -174,6 +182,7 @@ class Vehicle:
                 tau_lead (float, optional) : the vehicle dynamics coefficent of the leading vehicle in the platoon
                 a_lead (float, optional) : the acceleration of the leading vehicle in the platoon 
         """
+        log.info(f"=== Inititializing Vehicle {idx}===")
         self.config = config
         self.step_count = 0
 
@@ -191,6 +200,11 @@ class Vehicle:
         self.reset_max_ev = self.config.reset_max_ev  # max +/- value when generating new ev on reset
         self.reset_max_a = self.config.reset_max_a # max +/- value for accel on reset
 
+        self.evaluator_states_enabled = evaluator_states_enabled
+        self.reset_ep_eval_max = self.config.reset_ep_eval_max
+        self.reset_ev_eval_max = self.config.reset_ev_eval_max
+        self.reset_a_eval_max  = self.config.reset_a_eval_max
+
         self.reward = 0
         self.u = 0 # the input to the system
         self.exog = 0
@@ -205,7 +219,7 @@ class Vehicle:
 
         self.num_actions = 1
 
-        self.reset(a_lead) # initializes the states randomly
+        self.reset(a_lead) # initializes the states 
 
         """ Defining the system matrices """
         self.set_system_matrices(self.config.method)
@@ -231,7 +245,7 @@ class Vehicle:
                                 self.T/self.tau_lead])
 
         elif method == self.config.exact:
-            print("Using Exact Discretization.")
+            log.info("Using Exact Discretization.")
             A_13 = - self.h * self.tau + self.h * self.tau * e \
             - self.tau * self.T + self.tau**2 - (self.tau ** 2) * e
 
@@ -267,10 +281,11 @@ class Vehicle:
                                0,
                                -e_lead + 1])
 
-        print(" --- Vehicle %s Initialized System Matrices --- " % (self.idx))
-        print("A Matrix: ", self.A)
-        print("B Matrix: ", self.B)
-        print("C Matrix: ", self.C)
+        log.info(" --- Vehicle %s Initialized System Matrices --- " % (self.idx))
+        log.info("A Matrix: %s" % (self.A))
+        log.info("B Matrix: %s" % (self.B))
+        log.info("C Matrix: %s" % (self.C))
+        self.print_hyps(output="log")
         
     def render(self, str_form=False):
         output = f"|x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)}|"
@@ -293,13 +308,19 @@ class Vehicle:
 
         if debug_mode:
             print("====__  Vehicle %s __====" % (self.idx))
-            print("--- Hyperparameters ---")
-            print(f"\th: {self.h}, T: {self.T}, tau: {self.tau}, tau_lead: {self.tau_lead}")
+            self.print_hyps(output="print")
             print("--- Evolution Equation Timestep %s ---" % (self.step_count))
             print("\tA Matrix: ", self.A)
+            print("\tB Matrix: ", self.B)
+            print("\tC Matrix: ", self.C)
             print("\tx before evolution: ", self.x)
-
-        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
+            print("--- Reward Equation ---")
+            print("\tx[0]=epi: ", self.x[0])
+            print("\ta: ", self.a)
+            print("\tx[1]=evi: ", self.x[1])
+            print("\tb: ", self.b)
+            print("\tu: ", self.u)
+            print("\texog: ", self.exog)
 
         if abs(self.x[0]) > self.config.max_ep and self.config.can_terminate:
             terminal=True
@@ -307,18 +328,13 @@ class Vehicle:
         else:
             self.reward = (self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(self.u)**2)  * self.config.re_scalar
 
+        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
+
+
+
         if debug_mode:
-            print("\tB Matrix: ", self.B)
-            print("\tu: ", self.u)
-            print("\tC Matrix: ", self.C)
-            print("\texog: ", self.exog)
             print("\tx after evolution: ", self.x)
-            print("--- Reward Equation ---")
-            print("\tx[0]=epi: ", self.x[0])
-            print("\ta: ", self.a)
-            print("\tx[1]=evi: ", self.x[1])
-            print("\tb: ", self.b)
-            print("\tu: ", self.u)
+
 
 
         return self.x[0:self.num_states], -self.reward, terminal # return only the elements that correspond to the state size.
@@ -333,22 +349,55 @@ class Vehicle:
         self.exog_info = 0
         self.step_count = 0
 
-        if self.rand_states == True:
-            self.x = np.array([util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.config.reset_ep_max, config=self.config), # intial gap error (m)
-                        util.get_random_val(self.config.rand_gen, self.reset_max_ev, std_dev=self.config.reset_max_ev, config=self.config), # initial velocity error
-                        util.get_random_val(self.config.rand_gen, self.reset_max_a, std_dev=self.config.reset_max_a, config=self.config), # initial accel of this vehicle
+        if self.evaluator_states_enabled:
+            self.x = np.array([self.reset_ep_eval_max, # intial gap error (m)
+                        self.reset_ev_eval_max, # initial velocity error
+                        self.reset_a_eval_max, # initial accel of this vehicle
                         a_lead])   # initial accel of leading vehicle
         else:
-            self.x = np.array([self.reset_ep_max, # intial gap error (m)
-                        self.reset_max_ev, # initial velocity error
-                        self.reset_max_a, # initial accel of this vehicle
-                        a_lead])   # initial accel of leading vehicle
+            if self.rand_states == True:
+                self.x = np.array([util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.reset_ep_max, config=self.config), # intial gap error (m)
+                            util.get_random_val(self.config.rand_gen, self.reset_max_ev, std_dev=self.reset_max_ev, config=self.config), # initial velocity error
+                            util.get_random_val(self.config.rand_gen, self.reset_max_a, std_dev=self.reset_max_a, config=self.config), # initial accel of this vehicle
+                            a_lead])   # initial accel of leading vehicle
+            else:
+                self.x = np.array([self.reset_ep_max, # intial gap error (m)
+                            self.reset_max_ev, # initial velocity error
+                            self.reset_max_a, # initial accel of this vehicle
+                            a_lead])   # initial accel of leading vehicle
 
         return (self.x[0:self.num_states])
     
     def set_state(self, state):
         self.x = state
     
+    def print_hyps(self, output: str):
+        """
+        Method for printing attributes for the class
+        """
+        valid_output_opts = ["log", "print"]
+        if output not in valid_output_opts:
+            raise ValueError(f"Invalid parameter for 'output'. Choices are: {valid_output_opts}")
+
+        hyp = " | ".join((
+                    f"\tself.idx = {self.idx}",
+                    f"self.h = {self.h}",
+                    f"self.T = {self.T}",
+                    f"self.tau = {self.tau}",
+                    f"self.tau_lead = {self.tau_lead}\n\t",
+                    f"self.a = {self.a}",
+                    f"self.b = {self.b}",
+                    f"self.max_ep = {self.max_ep}", # max ep error before environment returns terminate = True
+                    f"self.max_ev = {self.max_ev}", # max ev error before environment returns terminate = True
+                    f"self.reset_ep_max = {self.reset_ep_max}\n\t", # used as the max +/- value when generating new ep on reset
+                    f"self.reset_max_ev = {self.reset_max_ev}",  # max +/- value when generating new ev on reset
+                    f"self.reset_max_a = {self.reset_max_a}" # max +/- value for accel on reset
+                ))
+        if output == "log":
+            log.info(f"---== Hyperparameters for vehicle {self.idx} ==---")
+            log.info(hyp)
+        elif output == "print":
+            print(hyp)
 
 if __name__ == "__main__":
     pass
