@@ -1,8 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from agent import model, ddpgagent
 from workers import trainer, controller, evaluator
-from src import config, util, reporter
+from src import config, util, reporter, rand
 from src.cmd import api
 import os 
 import random
@@ -21,16 +20,14 @@ def setup_global_logging_stream(conf):
 
 
 def run(args):
-    physical_devices = tf.config.list_physical_devices('GPU') 
     conf = config.Config()
     args, conf = api.get_cmdl_args(args[1:], "Autonomous Vehicle Platoon with DDPG.", conf)
 
     # set the seed for everything
-    os.environ['PYTHONHASHSEED']=str(conf.random_seed)
-    random.seed(conf.random_seed)
-    np.random.seed(conf.random_seed)
-    tf.random.set_seed(conf.random_seed)
-    
+    rand.set_global_seed(conf.random_seed)
+
+    physical_devices = tf.config.list_physical_devices('GPU') 
+
     if len(physical_devices) > 0:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
 

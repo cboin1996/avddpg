@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from src import config, noise, replaybuffer, environment, util
+from src import config, noise, replaybuffer, environment, util, rand
 from agent import model, ddpgagent
 import matplotlib.pyplot as plt
 import h5py
@@ -27,10 +27,8 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, s
     
     if seed:
         evaluation_seed = conf.evaluation_seed
-        os.environ['PYTHONHASHSEED']=str(conf.evaluation_seed)
-        random.seed(conf.evaluation_seed)
-        np.random.seed(conf.evaluation_seed)
-        tf.random.set_seed(conf.evaluation_seed)
+        rand.set_global_seed(conf.evaluation_seed)
+
     else:
         evaluation_seed = None
 
