@@ -127,9 +127,6 @@ def run(base_dir, timestamp, debug_enabled, conf):
                                     layer2_size=conf.critic_layer2_size,
                                     action_layer_size=conf.critic_act_layer_size)
 
-            actors.append(actor)
-            critics.append(critic)
-
             target_actor = model.get_actor(env.num_states, env.num_actions, high_bound, seed_int=conf.random_seed, 
                                             hidd_mult=env.hidden_multiplier,
                                             layer1_size=conf.actor_layer1_size, 
@@ -139,9 +136,22 @@ def run(base_dir, timestamp, debug_enabled, conf):
                                             layer2_size=conf.critic_layer2_size,
                                             action_layer_size=conf.critic_act_layer_size)
 
+
             # Making the weights equal initially
+            if i == 0 and p == 0:
+                log.info("Getting the initial weights to be used across all models in each platoon!")
+                initial_actor_weights = actor.get_weights()
+                initial_critic_weights = critic.get_weights()
+            else:
+                log.info(f"Initializing platoon idx [{p}] model [{i}] with the same weights as platoon [0] model [0]!")
+                actor.set_weights(initial_actor_weights)
+                critic.set_weights(initial_critic_weights)
+            
             target_actor.set_weights(actor.get_weights())
             target_critic.set_weights(critic.get_weights())
+
+            actors.append(actor)
+            critics.append(critic)
             target_actors.append(target_actor)
             target_critics.append(target_critic)
 
