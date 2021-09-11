@@ -14,7 +14,7 @@ import warnings
 
 def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, seed=True, pl_idx=None, debug_enabled=False):
     log = logging.getLogger(__name__)
-    print("====__--- Launching Evaluator for Platoon 1! ---__====")
+    log.info(f"====__--- Launching Evaluator for Platoon {pl_idx}! ---__====")
     if conf is None:
         conf_path = os.path.join(root_path, config.Config.param_path)
         log.info(f"Loading configuration instance from {conf_path}")

@@ -191,11 +191,16 @@ class Vehicle:
         self.T = self.config.sample_rate
         self.tau = self.config.dyn_coeff
         self.tau_lead = tau_lead
-        self.a = self.config.reward_ev_coeff
-        self.b = self.config.reward_u_coeff
+
+        self.a = self.config.reward_ep_coeff
+        self.b = self.config.reward_ev_coeff
+        self.c = self.config.reward_u_coeff
+        self.d = self.config.reward_jerk_coeff
 
         self.max_ep = self.config.max_ep # max ep error before environment returns terminate = True
         self.max_ev = self.config.max_ev # max ev error before environment returns terminate = True
+        self.max_a  = self.config.action_high # map a is limited by the action as the action is the acceleration.
+
         self.reset_ep_max = self.config.reset_ep_max # used as the max +/- value when generating new ep on reset
         self.reset_max_ev = self.config.reset_max_ev  # max +/- value when generating new ev on reset
         self.reset_max_a = self.config.reset_max_a # max +/- value for accel on reset
@@ -300,11 +305,17 @@ class Vehicle:
         Args:
             u (float): the action to take
             exog_info (float): the exogenous information given to the vehicle
+            prev_a (float) : the previous acceleration for the vehicle
         """
         self.step_count +=1
         terminal = False
         self.u = u
         self.exog = exog_info 
+
+        jerk =  abs(self.x[2] - self.prev_x[2]) / (2 * self.max_a)
+        norm_ep = self.x[0] / self.max_ep
+        norm_ev = self.x[1] / self.max_ev
+        norm_u  = self.u / abs(self.action_high)
 
         if debug_mode:
             print("====__  Vehicle %s __====" % (self.idx))
@@ -314,28 +325,30 @@ class Vehicle:
             print("\tB Matrix: ", self.B)
             print("\tC Matrix: ", self.C)
             print("\tx before evolution: ", self.x)
+            print("\tprev_x : ", self.prev_x)
             print("--- Reward Equation ---")
-            print("\tx[0]=epi: ", self.x[0])
             print("\ta: ", self.a)
-            print("\tx[1]=evi: ", self.x[1])
+            print("\tx[0]=epi: ", self.x[0])
             print("\tb: ", self.b)
+            print("\tx[1]=evi: ", self.x[1])
+            print("\tc: ", self.c)
             print("\tu: ", self.u)
+            print("\td: ", self.d)
+            print("\tjerk: ", jerk)
             print("\texog: ", self.exog)
 
-        if abs(self.x[0]) > self.config.max_ep and self.config.can_terminate:
+        if (abs(self.x[0]) > self.config.max_ep or abs(self.x[1]) > self.config.max_ev) and self.config.can_terminate:
             terminal=True
             self.reward = self.config.terminal_reward  * self.config.re_scalar
+            log.info(f"Terminal state detected at (val, allowed) for ep = ({self.x[0]}, {self.config.max_ep}), ev = ({self.x[1]}, {self.config.max_ev}). Returning reward: {self.reward}")
         else:
-            self.reward = (self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(self.u)**2)  * self.config.re_scalar
+            self.reward = (self.a*(norm_ep) + self.b*(norm_ev) + self.c*(norm_u) + self.d*(jerk))  * self.config.re_scalar
 
+        self.prev_x = self.x
         self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
-
-
 
         if debug_mode:
             print("\tx after evolution: ", self.x)
-
-
 
         return self.x[0:self.num_states], -self.reward, terminal # return only the elements that correspond to the state size.
     
@@ -366,6 +379,7 @@ class Vehicle:
                             self.reset_max_a, # initial accel of this vehicle
                             a_lead])   # initial accel of leading vehicle
 
+        self.prev_x = self.x
         return (self.x[0:self.num_states])
     
     def set_state(self, state):

@@ -5,6 +5,8 @@ import numpy as np
 
 import logging
 
+from src import config
+
 logger = logging.getLogger(__name__)
 
 class Server:
@@ -63,6 +65,8 @@ class Server:
             logger.info(f"System grads after averaging: {system_avg_grads}")
         return system_avg_grads
     
+def get_fed_enabled_mask(conf: config.Config) -> bool:
+    return (conf.fed_method == conf.interfrl or conf.fed_method == conf.intrafrl) and (conf.framework == conf.dcntrl)
 
 if __name__=="__main__":
     log_format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
@@ -74,7 +78,7 @@ if __name__=="__main__":
     formatter = logging.Formatter(log_format)
     console.setFormatter(formatter)
 
-    server = Server("fed")
+    server = Server("fed", True)
 
     num_models = 1
     num_platoons = 2
@@ -99,7 +103,7 @@ if __name__=="__main__":
         for m in range(num_models):
             grads = grads_list[p][m]
             fed_proc_grads[m][p] = grads
-    fed_avg = server.get_avg_grads(fed_proc_grads, debug=True)
+    fed_avg = server.get_avg_grads(fed_proc_grads, True)
     logger.info(f"Input gradients: {fed_proc_grads}")
     logger.info(f"Output gradients: {fed_avg}")
     # for p in range(num_platoons):
