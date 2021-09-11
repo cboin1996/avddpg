@@ -312,10 +312,10 @@ class Vehicle:
         self.u = u
         self.exog = exog_info 
 
+        norm_ep = abs(self.x[0]) / self.max_ep
+        norm_ev = abs(self.x[1]) / self.max_ev
+        norm_u  = abs(self.u) / abs(self.action_high)
         jerk =  abs(self.x[2] - self.prev_x[2]) / (2 * self.max_a)
-        norm_ep = self.x[0] / self.max_ep
-        norm_ev = self.x[1] / self.max_ev
-        norm_u  = self.u / abs(self.action_high)
 
         if debug_mode:
             print("====__  Vehicle %s __====" % (self.idx))
