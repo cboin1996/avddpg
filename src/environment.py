@@ -63,7 +63,7 @@ class Platoon:
     def render(self):
         output = ""
         for f in self.followers:
-            output += f"{f.render(str_form=True)} <~ "
+            output += f"{f.render(str_form=True)} <~ \t\t"
         print(output, end="\r", flush=True)
     
 
@@ -293,7 +293,7 @@ class Vehicle:
         self.print_hyps(output="log")
         
     def render(self, str_form=False):
-        output = f"|x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)}|"
+        output = f"| v[{self.idx}] -- x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)} -- |"
         if str_form == True:
             return output
         else:

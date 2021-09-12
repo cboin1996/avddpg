@@ -39,17 +39,17 @@ class Config():
         self.pl_leader_tau = 0.5
         self.exact = 'exact'
         self.euler = 'euler'
-        self.method = self.exact
+        self.method = self.euler
 
         self.timegap = 1.25
         self.dyn_coeff = 0.5
-        self.reward_ep_coeff = 0.4
-        self.reward_ev_coeff = 0.20
-        self.reward_u_coeff = 0.20
-        self.reward_jerk_coeff = 0.20
+        self.reward_ep_coeff = 0.6
+        self.reward_ev_coeff = 0.30
+        self.reward_u_coeff = 0.30
+        self.reward_jerk_coeff = 0.30
 
         self.max_ep = 20
-        self.max_ev = 40
+        self.max_ev = 20
         
         self.reset_ep_max = 1.5 # max position error upon environment reset
         self.reset_max_ev = 1.5 # max velocity error upon environment reset
