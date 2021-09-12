@@ -43,13 +43,13 @@ class Config():
 
         self.timegap = 1.25
         self.dyn_coeff = 0.5
-        self.reward_ep_coeff = 0.2
-        self.reward_ev_coeff = 0.10
-        self.reward_u_coeff = 0.10
-        self.reward_jerk_coeff = 0.10
+        self.reward_ep_coeff = 0.4
+        self.reward_ev_coeff = 0.20
+        self.reward_u_coeff = 0.20
+        self.reward_jerk_coeff = 0.20
 
         self.max_ep = 20
-        self.max_ev = 50
+        self.max_ev = 40
         
         self.reset_ep_max = 1.5 # max position error upon environment reset
         self.reset_max_ev = 1.5 # max velocity error upon environment reset
@@ -62,7 +62,7 @@ class Config():
         self.action_high =2.5
         self.action_low = -2.5
 
-        self.re_scalar = 0.1 # reward scale
+        self.re_scalar = 1 # reward scale
         self.terminal_reward = 1000
 
         """Trainer"""
@@ -97,7 +97,7 @@ class Config():
         self.tau = 0.001 # target network update coeff
 
         self.batch_size=64
-        self.buffer_size=100000
+        self.buffer_size=200000
         self.show_env=False
 
         """Models"""
