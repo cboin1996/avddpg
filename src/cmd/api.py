@@ -59,6 +59,7 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
     add_esim.add_argument("exp_path", type=str, help="path to experiment directory")
     add_esim.add_argument("--sim_debug", type=bool, default=False, help="whether to launch the simulator step by step or not.")
+    add_esim.add_argument("--sim_render", type=bool, help="Whether to output the environment states to console.")
 
     add_lsim = subparsers.add_parser('lsim', help="run a latex table generator for a single config file")
     add_lsim.add_argument("config_path", type=str, help="path to trained configuration json file")

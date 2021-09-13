@@ -56,7 +56,7 @@ def run(args):
     elif args.mode == 'esim': # run eval with that of conf.json
         setup_global_logging_stream(conf)
         for p in range(conf.num_platoons):
-            evaluator.run(root_path=args.exp_path, out='save', seed=True, pl_idx=p+1, debug_enabled=args.sim_debug) # already seeded above
+            evaluator.run(root_path=args.exp_path, out='save', seed=True, pl_idx=p+1, debug_enabled=args.sim_debug, render=args.sim_render) # already seeded above
 
     elif args.mode == 'lsim':
         setup_global_logging_stream(conf)

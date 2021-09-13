@@ -236,6 +236,7 @@ class Trainer:
 
             self.update_reward_list(ep)
 
+        self.close_renderings()
         self.run_simulations()
         
         self.conf.pl_rew_for_simulation = np.average(self.conf.pl_rews_for_simulations)
@@ -375,6 +376,10 @@ class Trainer:
                 self.all_avg_reward_lists[p][m].append(avg_reward)
         print("")
     
+    def close_renderings(self):
+        for env in self.all_envs:
+            env.close_render()
+            
     def run_simulations(self):
         for p in range(self.num_platoons):
             plt.figure()

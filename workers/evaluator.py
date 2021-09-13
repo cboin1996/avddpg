@@ -12,7 +12,7 @@ import logging
 
 import warnings
 
-def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, seed=True, pl_idx=None, debug_enabled=False):
+def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, seed=True, pl_idx=None, debug_enabled=False, render=False):
     log = logging.getLogger(__name__)
     log.info(f"====__--- Launching Evaluator for Platoon {pl_idx}! ---__====")
     if conf is None:
@@ -54,7 +54,7 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, s
         fig, axs = plt.subplots(num_rows,num_cols, figsize = (4,12))
         states = env.reset()
         for i in range(conf.steps_per_episode):
-            if conf.show_env == True:
+            if conf.show_env == True or render:
                 env.render()
                 
             for m in range(num_models):
@@ -102,4 +102,5 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, s
             
             plt.show()
     
+    env.close_render()
     return pl_rew

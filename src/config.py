@@ -41,12 +41,13 @@ class Config():
         self.euler = 'euler'
         self.method = self.euler
 
-        self.timegap = 1.25
+        self.timegap = 1.0
         self.dyn_coeff = 0.5
-        self.reward_ep_coeff = 0.6
-        self.reward_ev_coeff = 0.30
-        self.reward_u_coeff = 0.30
-        self.reward_jerk_coeff = 0.30
+
+        self.reward_ep_coeff = 1
+        self.reward_ev_coeff = 0.2
+        self.reward_u_coeff = 0.2
+        self.reward_jerk_coeff = 0.2
 
         self.max_ep = 20
         self.max_ev = 20
@@ -62,7 +63,7 @@ class Config():
         self.action_high =2.5
         self.action_low = -2.5
 
-        self.re_scalar = 1 # reward scale
+        self.re_scalar = 0.75 # reward scale
         self.terminal_reward = 1000
 
         """Trainer"""
@@ -97,7 +98,7 @@ class Config():
         self.tau = 0.001 # target network update coeff
 
         self.batch_size=64
-        self.buffer_size=200000
+        self.buffer_size=100000
         self.show_env=False
 
         """Models"""
