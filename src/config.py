@@ -44,7 +44,7 @@ class Config():
         self.timegap = 1.0
         self.dyn_coeff = 0.1
 
-        self.reward_ep_coeff = 1
+        self.reward_ep_coeff = 0.4
         self.reward_ev_coeff = 0.2
         self.reward_u_coeff = 0.2
         self.reward_jerk_coeff = 0.2
@@ -64,7 +64,7 @@ class Config():
         self.action_low = -2.5
 
         self.re_scalar = 0.75 # reward scale
-        self.terminal_reward = 1000
+        self.terminal_reward = 100
 
         """Trainer"""
         self.can_terminate = True

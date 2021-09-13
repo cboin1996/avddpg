@@ -62,7 +62,7 @@ class Platoon:
 
         # Rendering attr
         self.viewer = None
-        self.screen_width = 1200
+        self.screen_width = 600 * self.num_models
         self.screen_height = 550
         self.max_position = 1.2*self.config.max_ep*self.num_models
         self.min_position = -self.max_position
@@ -235,6 +235,8 @@ class Platoon:
             rewards = [self.get_reward(states, rewards)]
 
         platoon_done = True if True in terminals else False
+        if platoon_done:
+            log.info(f"Platoon [{self.pl_idx}] is terminating as a vehicle reached terminal state!")
         return states, rewards, platoon_done
     
     def get_exogenous_info(self, idx, leader_exog):
@@ -483,7 +485,7 @@ class Vehicle:
         if (abs(self.x[0]) > self.config.max_ep or abs(self.x[1]) > self.config.max_ev) and self.config.can_terminate:
             terminal=True
             self.reward = self.config.terminal_reward  * self.config.re_scalar
-            log.info(f"Terminal state detected at (val, allowed) for ep = ({self.x[0]}, {self.config.max_ep}), ev = ({self.x[1]}, {self.config.max_ev}). Returning reward: {self.reward}")
+            log.info(f"Vehicle [{self.idx}] : Terminal state detected at (val, allowed) for ep = ({self.x[0]}, {self.config.max_ep}), ev = ({self.x[1]}, {self.config.max_ev}). Returning reward: {self.reward}")
         else:
             self.reward = (self.a*(norm_ep) + self.b*(norm_ev) + self.c*(norm_u) + self.d*(jerk))  * self.config.re_scalar
 
