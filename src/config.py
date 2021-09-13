@@ -36,13 +36,13 @@ class Config():
         self.pl_leader_reset_a = 0 # max initial acceleration of the platoon leader (used in the calculation for \dot{a_{i-1}}) (bound for uniform, std_dev for normal)
         self.reset_max_u = 0.100 # max initial control input of the platoon leader (used in the calculation for \dot{a_{i-1}}, (bound for uniform, std_dev for normal)
 
-        self.pl_leader_tau = 0.5
+        self.pl_leader_tau = 0.1
         self.exact = 'exact'
         self.euler = 'euler'
         self.method = self.euler
 
         self.timegap = 1.0
-        self.dyn_coeff = 0.5
+        self.dyn_coeff = 0.1
 
         self.reward_ep_coeff = 1
         self.reward_ev_coeff = 0.2
@@ -98,7 +98,7 @@ class Config():
         self.tau = 0.001 # target network update coeff
 
         self.batch_size=64
-        self.buffer_size=100000
+        self.buffer_size=200000
         self.show_env=False
 
         """Models"""
