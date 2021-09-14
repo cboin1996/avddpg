@@ -482,6 +482,11 @@ class Vehicle:
             print("\tjerk: ", jerk)
             print("\texog: ", self.exog)
 
+        self.cumulative_accel += self.x[2]
+        self.velocity = self.cumulative_accel * self.T # updates the velocity of the car.
+        self.desired_headway = (self.stand_still + self.h * self.velocity) # updates the desired headway of the car
+        self.headway = self.x[0] + self.desired_headway # updates the headway of the car.
+
         if (abs(self.x[0]) > self.config.max_ep or abs(self.x[1]) > self.config.max_ev) and self.config.can_terminate:
             terminal=True
             self.reward = self.config.terminal_reward  * self.config.re_scalar
@@ -490,11 +495,6 @@ class Vehicle:
             self.reward = (self.a*(norm_ep) + self.b*(norm_ev) + self.c*(norm_u) + self.d*(jerk))  * self.config.re_scalar
 
         self.prev_x = self.x
-        self.cumulative_accel += self.x[2]
-        self.velocity = self.cumulative_accel * self.T # updates the velocity of the car.
-        self.desired_headway = (self.stand_still + self.h * self.velocity) # updates the desired headway of the car
-        self.headway = self.x[0] + self.desired_headway # updates the headway of the car.
-
         self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info) # state update
 
         if debug_mode:

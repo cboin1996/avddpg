@@ -63,8 +63,8 @@ class Config():
         self.action_high =2.5
         self.action_low = -2.5
 
-        self.re_scalar = 0.75 # reward scale
-        self.terminal_reward = 100
+        self.re_scalar = 1 # reward scale
+        self.terminal_reward = 1
 
         """Trainer"""
         self.can_terminate = True
@@ -98,7 +98,7 @@ class Config():
         self.tau = 0.001 # target network update coeff
 
         self.batch_size=64
-        self.buffer_size=200000
+        self.buffer_size=100000
         self.show_env=False
 
         """Models"""
