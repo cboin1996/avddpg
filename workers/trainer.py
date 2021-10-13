@@ -3,7 +3,7 @@ import numpy as np
 from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
 from workers import evaluator
-from server import federated
+from src.server import federated
 import matplotlib.pyplot as plt
 import datetime
 import sys, os
@@ -43,13 +43,15 @@ class Trainer:
 
         self.all_actor_grad_list = []
         self.all_critic_grad_list = []
+        self.fed_weights = []
+        self.fed_weight_sums = []
 
         self.all_episodic_reward_counters = []
 
     def initialize(self):
         log.info("=== Initializing Trainer ===")
         self.conf.timestamp = str(self.timestamp)
-        self.conf.fed_enabled = federated.get_fed_enabled_mask(self.conf)
+        self.conf.fed_enabled = get_fed_enabled_mask(self.conf)
 
         if self.conf.fed_enabled:
             self.fed_server = federated.Server('AVDDPG', self.debug_enabled)
@@ -166,29 +168,35 @@ class Trainer:
         Gradients across the common vehicles in each platoon .. AVERAGE(platoon1_vehicle1:platoonN_vehicle1)"""
 
         if self.conf.fed_method == self.conf.interfrl:
-            log.info(f"{self.conf.fed_method} enabled, disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
+            log.info(f"{self.conf.fed_method} enabled | weighted = {self.conf.weighted_average_enabled}, disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
             for _ in range(self.num_models):
                 actor_grad_list = []
                 critic_grad_list = []
-
+                model_weights = []
                 for _ in range(self.num_platoons):
                     actor_grad_list.append([])
                     critic_grad_list.append([])
+                    model_weights.append(0)
+
                 self.all_actor_grad_list.append(actor_grad_list)
                 self.all_critic_grad_list.append(critic_grad_list)
+                self.fed_weights.append(model_weights)
         
         if self.conf.fed_method == self.conf.intrafrl:
-            log.info(f"{self.conf.fed_method} enabled, disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
+            log.info(f"{self.conf.fed_method} enabled | weighted = {self.conf.weighted_average_enabled}, disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
             for _ in range(self.num_platoons):
                 actor_grad_list = []
                 critic_grad_list = []
+                pl_weights = []
 
                 for _ in range(self.num_models):
                     actor_grad_list.append([])
                     critic_grad_list.append([])
-                
+                    pl_weights.append(0)
+
                 self.all_actor_grad_list.append(actor_grad_list)
                 self.all_critic_grad_list.append(critic_grad_list)
+                self.fed_weights.append(pl_weights)
 
     def run(self):
         """
@@ -225,9 +233,9 @@ class Trainer:
                     all_rewards.append(rewards)
                     all_terminals.append(terminal)
 
-                self.train_all_models(all_rewards, all_states, all_prev_states)
+                self.train_all_models(all_rewards, all_states, all_prev_states, ep)
                 if fed_mask and ((i % self.conf.fed_update_delay_steps) == 0):
-                    self.train_all_models_federated(i)
+                    self.train_all_models_federated(i, ep)
                     
                 if True in all_terminals: # break if any of the platoons have failed
                     break
@@ -264,7 +272,7 @@ class Trainer:
         
         return states, rewards, terminal
 
-    def train_all_models(self, all_rewards, all_states, all_prev_states):
+    def train_all_models(self, all_rewards, all_states, all_prev_states, training_episode):
         for p in range(self.num_platoons):
             for m in range(self.num_models):
                 self.all_rbuffers[p][m].add((all_prev_states[p][m], 
@@ -281,12 +289,25 @@ class Trainer:
 
                     # append gradients for avg'ing if federated enabled
                     if self.conf.fed_method == self.conf.interfrl:
-                        self.all_actor_grad_list[m][p] = actor_grad
-                        self.all_critic_grad_list[m][p] = critic_grad
+                        if is_weighted_fed_enabled(self.conf, training_episode):
+                            avg_cumulative_reward = np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
+                            log.info(f"{self.all_ep_reward_lists[p][m][-self.conf.weighted_window:]}, {avg_cumulative_reward}")
+                            self.all_actor_grad_list[m][p] = np.multiply(actor_grad, avg_cumulative_reward)
+                            self.all_critic_grad_list[m][p] = np.multiply(critic_grad, avg_cumulative_reward)
+                            self.fed_weights[m][p] = avg_cumulative_reward
+                        else:
+                            self.all_actor_grad_list[m][p] = actor_grad
+                            self.all_critic_grad_list[m][p] = critic_grad
 
                     elif self.conf.fed_method == self.conf.intrafrl:
-                        self.all_actor_grad_list[p][m] = actor_grad
-                        self.all_critic_grad_list[p][m] = critic_grad
+                        if is_weighted_fed_enabled(self.conf, training_episode):
+                            avg_cumulative_reward = np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
+                            self.all_actor_grad_list[p][m] = np.multiply(actor_grad, avg_cumulative_reward)
+                            self.all_critic_grad_list[p][m] = np.multiply(critic_grad, avg_cumulative_reward)
+                            self.fed_weights[p][m] = avg_cumulative_reward
+                        else:
+                            self.all_actor_grad_list[p][m] = actor_grad
+                            self.all_critic_grad_list[p][m] = critic_grad
 
                     self.all_critic_optimizers[p][m].apply_gradients(zip(critic_grad, self.all_critics[p][m].trainable_variables))
                     self.all_actor_optimizers[p][m].apply_gradients(zip(actor_grad, self.all_actors[p][m].trainable_variables))
@@ -297,11 +318,17 @@ class Trainer:
                                                                             self.all_actors[p][m].weights)
                     self.all_target_actors[p][m].set_weights(ta_new_weights)
                     self.all_target_critics[p][m].set_weights(tc_new_weights)
+        
+        if is_weighted_fed_enabled(self.conf, training_episode):
+            self.fed_weight_sums = tf.reduce_sum(self.fed_weights, axis=1)
 
-    def train_all_models_federated(self, i):
+
+    def train_all_models_federated(self, i, training_episode):
         # apply FL aggregation method, and reapply gradients to models
         if self.debug_enabled:
-            log.info(f"Applying FRL at step {i}")
+            log.info(f"Applying {self.conf.fed_method} at step {i}")
+        if is_weighted_fed_enabled(self.conf, training_episode):
+            log.info(f"using weighted sums {[self.fed_weight_sums]}")
         for p in range(self.num_platoons):
             all_rbuffers_are_filled = True
             if False in self.all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
@@ -309,8 +336,13 @@ class Trainer:
                 break
         
         if all_rbuffers_are_filled:
-            actor_avg_grads = self.fed_server.get_avg_grads(self.all_actor_grad_list)
-            critic_avg_grads = self.fed_server.get_avg_grads(self.all_critic_grad_list)
+            if is_weighted_fed_enabled(self.conf, training_episode):
+                actor_avg_grads = self.fed_server.get_weighted_avg_grads(self.all_actor_grad_list, self.fed_weight_sums)
+                critic_avg_grads = self.fed_server.get_weighted_avg_grads(self.all_critic_grad_list, self.fed_weight_sums)
+            else:
+                actor_avg_grads = self.fed_server.get_avg_grads(self.all_actor_grad_list)
+                critic_avg_grads = self.fed_server.get_avg_grads(self.all_critic_grad_list)
+
             for p in range(self.num_platoons):
                 for m in range(self.num_models):
                     if self.conf.fed_method == self.conf.interfrl:
@@ -410,3 +442,10 @@ class Trainer:
         tf.keras.utils.plot_model(target_critic, to_file=os.path.join(self.base_dir, self.conf.t_critic_picname % tag), show_shapes=True)
 
         plt.plot(reward_list, label=f"Platoon {p+1} Vehicle {m+1}")
+
+
+def get_fed_enabled_mask(conf: config.Config) -> bool:
+    return (conf.fed_method == conf.interfrl or conf.fed_method == conf.intrafrl) and (conf.framework == conf.dcntrl)
+
+def is_weighted_fed_enabled(conf: config.Config, training_episode: int) -> bool:
+    return (conf.weighted_average_enabled and training_episode >= conf.weighted_window)

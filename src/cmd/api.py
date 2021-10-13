@@ -28,6 +28,11 @@ def set_args_to_config(args, config: config.Config):
         config.fed_update_delay = args.fed_update_delay
         config.fed_update_delay_steps = int(config.fed_update_delay/config.sample_rate)
 
+    if hasattr(args, "fed_weight_enabled") and args.fed_weight_enabled is not None:
+        config.weighted_average_enabled = args.fed_weight_enabled
+    
+    if hasattr(args, "fed_weight_window") and args.fed_weight_window is not None:
+        config.weighted_window = args.fed_weight_window
     
     return config
 def get_cmdl_args(args: list, description: str, config: config.Config):
@@ -54,7 +59,8 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--fed_update_count", type=int, help="number of episodes between federated averaging updates")
     add_tr.add_argument("--fed_cutoff_ratio", type=float, help="the ratio to toral number of episodes at which FRL is cutoff")
     add_tr.add_argument("--fed_update_delay", type=float, help="the time in second between updates during a training episode for FRL.")
-
+    add_tr.add_argument("--fed_weight_enabled", type=bool, help="whether to use weighted averaging FRL.")
+    add_tr.add_argument("--fed_weight_window", type=int, help="how many cumulative episodes to average for calculating the weights.")
 
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
     add_esim.add_argument("exp_path", type=str, help="path to experiment directory")

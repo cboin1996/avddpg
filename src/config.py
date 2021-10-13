@@ -20,9 +20,11 @@ class Config():
         self.interfrl = "interfrl" # averages across the same environments from multiple platoons
         self.intrafrl = "intrafrl" # averages all envirnoments within a platoon, no sharing across platoons
         self.nofrl = "normal"
-        self.fed_method = self.nofrl
+        self.fed_method = self.interfrl
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.interfrl or self.fed_method == self.intrafrl) and (self.framework == self.dcntrl)
+        self.weighted_average_enabled = True
+        self.weighted_window = 10 # window for calculating the average cumulative reward weight (looks backwards for the given amount of episodes)
         self.fed_update_count = 1 # number of episodes between federated averaging updates
         self.fed_cutoff_ratio = 1.0 # the ratio to toral number of episodes at which FRL is cutoff
         self.fed_update_delay = 0.1 # the time in second between updates during a training episode for FRL.
@@ -142,7 +144,7 @@ class Config():
         self.pl_rews_for_simulations = []
         self.index_col = "timestamp"
         self.timestamp = None
-        self.drop_keys_in_report = ["fed_enabled", "modelA", "modelB", "dcntrl", "cntrl", "interfrl", "intrafrl", "hfrl", "vfrl", "nofrl", "res_dir", "report_dir", "param_path", "euler",
+        self.drop_keys_in_report = ["fed_enabled", "weighted_average_enabled", "modelA", "modelB", "dcntrl", "cntrl", "interfrl", "intrafrl", "hfrl", "vfrl", "nofrl", "res_dir", "report_dir", "param_path", "euler",
                                     "exact", "normal", "uniform", "show_env", "actor_fname", "actor_picname", "actor_weights", "critic_fname", "critic_picname",
                                     "critic_weights", "t_actor_fname", "t_actor_picname", "t_actor_weights", "t_critic_fname", "t_critic_picname", 
                                     "t_critic_weights", "fig_path", "zerofig_name", "guasfig_name", "stepfig_name", "rampfig_name", "dirs",
@@ -152,6 +154,7 @@ class Config():
                             "model" : "Whether a 3 (ModelA) of 4 (ModelB) state model",
                             "fed_method" : "Type of federated learning used",
                             "framework" : "Decentralized or centralized",
+                            "weighted_window" : "number of episodes to consider for calculating the weight for averaging",
                             "fed_update_count" : "The number of episodes between a federated averaging update",
                             "fed_update_delay" : "the time in second between updates during a training episode for FRL",
                             "fed_cutoff_ratio" : "The percent of all episodes before ending federated updates",
