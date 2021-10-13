@@ -20,7 +20,7 @@ class Config():
         self.interfrl = "interfrl" # averages across the same environments from multiple platoons
         self.intrafrl = "intrafrl" # averages all envirnoments within a platoon, no sharing across platoons
         self.nofrl = "normal"
-        self.fed_method = self.interfrl
+        self.fed_method = self.nofrl
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.interfrl or self.fed_method == self.intrafrl) and (self.framework == self.dcntrl)
         self.weighted_average_enabled = True
