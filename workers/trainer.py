@@ -168,7 +168,7 @@ class Trainer:
         Gradients across the common vehicles in each platoon .. AVERAGE(platoon1_vehicle1:platoonN_vehicle1)"""
 
         if self.conf.fed_method == self.conf.interfrl:
-            log.info(f"{self.conf.fed_method} enabled | weighted = {self.conf.weighted_average_enabled}, disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
+            log.info(f"{self.conf.fed_method} enabled (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}), disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
             for _ in range(self.num_models):
                 actor_grad_list = []
                 critic_grad_list = []
@@ -183,7 +183,7 @@ class Trainer:
                 self.fed_weights.append(model_weights)
         
         if self.conf.fed_method == self.conf.intrafrl:
-            log.info(f"{self.conf.fed_method} enabled | weighted = {self.conf.weighted_average_enabled}, disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
+            log.info(f"{self.conf.fed_method} enabled (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}), disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
             for _ in range(self.num_platoons):
                 actor_grad_list = []
                 critic_grad_list = []
@@ -210,7 +210,7 @@ class Trainer:
         for ep in range(self.conf.number_of_episodes):
             fed_mask = self.conf.fed_enabled and (ep % self.conf.fed_update_count) == 0 and ep <= self.conf.fed_cutoff_episode
             if fed_mask:
-                log.info(f"Applying federated averaging at episode {ep} w/ delay {self.conf.fed_update_delay}s (every {self.conf.fed_update_delay_steps} steps).")
+                log.info(f"Applying federated averaging (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}) at episode {ep} w/ delay {self.conf.fed_update_delay}s (every {self.conf.fed_update_delay_steps} steps).")
             
             if self.conf.fed_enabled and ep == self.conf.fed_cutoff_episode + 1:
                 log.info(f"Turned off federated learning as cutoff ratio [{self.conf.fed_cutoff_ratio}] ({self.conf.fed_cutoff_episode} episodes) passed at ep [{ep}]")
@@ -291,7 +291,6 @@ class Trainer:
                     if self.conf.fed_method == self.conf.interfrl:
                         if is_weighted_fed_enabled(self.conf, training_episode):
                             avg_cumulative_reward = np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
-                            log.info(f"{self.all_ep_reward_lists[p][m][-self.conf.weighted_window:]}, {avg_cumulative_reward}")
                             self.all_actor_grad_list[m][p] = np.multiply(actor_grad, avg_cumulative_reward)
                             self.all_critic_grad_list[m][p] = np.multiply(critic_grad, avg_cumulative_reward)
                             self.fed_weights[m][p] = avg_cumulative_reward
@@ -327,8 +326,8 @@ class Trainer:
         # apply FL aggregation method, and reapply gradients to models
         if self.debug_enabled:
             log.info(f"Applying {self.conf.fed_method} at step {i}")
-        if is_weighted_fed_enabled(self.conf, training_episode):
-            log.info(f"using weighted sums {[self.fed_weight_sums]}")
+            if is_weighted_fed_enabled(self.conf, training_episode):
+                log.info(f"using weighted sums {[self.fed_weight_sums]}")
         for p in range(self.num_platoons):
             all_rbuffers_are_filled = True
             if False in self.all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
