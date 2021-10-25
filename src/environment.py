@@ -533,6 +533,7 @@ class Vehicle:
                             a_lead])   # initial accel of leading vehicle
 
         self.prev_x = self.x
+
         return (self.x[0:self.num_states])
     
     def set_state(self, state):

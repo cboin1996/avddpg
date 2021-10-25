@@ -51,7 +51,7 @@ class Trainer:
     def initialize(self):
         log.info("=== Initializing Trainer ===")
         self.conf.timestamp = str(self.timestamp)
-        self.conf.fed_enabled = get_fed_enabled_mask(self.conf)
+        self.conf.fed_enabled = is_fed_enabled(self.conf)
 
         if self.conf.fed_enabled:
             self.fed_server = federated.Server('AVDDPG', self.debug_enabled)
@@ -208,11 +208,10 @@ class Trainer:
             conf : the configuration class config.Config()
         """
         for ep in range(self.conf.number_of_episodes):
-            fed_mask = self.conf.fed_enabled and (ep % self.conf.fed_update_count) == 0 and ep <= self.conf.fed_cutoff_episode
-            if fed_mask:
+            if is_valid_update_episode(self.conf, ep) and is_fed_enabled(self.conf):
                 log.info(f"Applying federated averaging (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}) at episode {ep} w/ delay {self.conf.fed_update_delay}s (every {self.conf.fed_update_delay_steps} steps).")
             
-            if self.conf.fed_enabled and ep == self.conf.fed_cutoff_episode + 1:
+            if is_fed_enabled(self.conf) and ep == self.conf.fed_cutoff_episode + 1:
                 log.info(f"Turned off federated learning as cutoff ratio [{self.conf.fed_cutoff_ratio}] ({self.conf.fed_cutoff_episode} episodes) passed at ep [{ep}]")
 
             self.all_episodic_reward_counters = []
@@ -233,8 +232,8 @@ class Trainer:
                     all_rewards.append(rewards)
                     all_terminals.append(terminal)
 
-                self.train_all_models(all_rewards, all_states, all_prev_states, ep)
-                if fed_mask and ((i % self.conf.fed_update_delay_steps) == 0):
+                self.train_all_models(all_rewards, all_states, all_prev_states, ep, i)
+                if is_fed_enabled(self.conf) and is_valid_update_episode(self.conf, ep) and is_valid_update_step(self.conf, i):
                     self.train_all_models_federated(i, ep)
                     
                 if True in all_terminals: # break if any of the platoons have failed
@@ -272,7 +271,7 @@ class Trainer:
         
         return states, rewards, terminal
 
-    def train_all_models(self, all_rewards, all_states, all_prev_states, training_episode):
+    def train_all_models(self, all_rewards, all_states, all_prev_states, training_episode, training_step):
         for p in range(self.num_platoons):
             for m in range(self.num_models):
                 self.all_rbuffers[p][m].add((all_prev_states[p][m], 
@@ -290,7 +289,7 @@ class Trainer:
                     # append gradients for avg'ing if federated enabled
                     if self.conf.fed_method == self.conf.interfrl:
                         if is_weighted_fed_enabled(self.conf, training_episode):
-                            avg_cumulative_reward = np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
+                            avg_cumulative_reward = 1/np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
                             self.all_actor_grad_list[m][p] = np.multiply(actor_grad, avg_cumulative_reward)
                             self.all_critic_grad_list[m][p] = np.multiply(critic_grad, avg_cumulative_reward)
                             self.fed_weights[m][p] = avg_cumulative_reward
@@ -300,7 +299,7 @@ class Trainer:
 
                     elif self.conf.fed_method == self.conf.intrafrl:
                         if is_weighted_fed_enabled(self.conf, training_episode):
-                            avg_cumulative_reward = np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
+                            avg_cumulative_reward = 1/np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
                             self.all_actor_grad_list[p][m] = np.multiply(actor_grad, avg_cumulative_reward)
                             self.all_critic_grad_list[p][m] = np.multiply(critic_grad, avg_cumulative_reward)
                             self.fed_weights[p][m] = avg_cumulative_reward
@@ -308,26 +307,25 @@ class Trainer:
                             self.all_actor_grad_list[p][m] = actor_grad
                             self.all_critic_grad_list[p][m] = critic_grad
 
-                    self.all_critic_optimizers[p][m].apply_gradients(zip(critic_grad, self.all_critics[p][m].trainable_variables))
-                    self.all_actor_optimizers[p][m].apply_gradients(zip(actor_grad, self.all_actors[p][m].trainable_variables))
+                    # local updates should only occur when global updates do not occur
+                    if not is_fed_enabled(self.conf) or not is_valid_update_step(self.conf, training_step):
+                        if self.debug_enabled:
+                            log.info(f"Applying local training at episode [{training_episode}] step [{training_step}]!")
+                        self.all_critic_optimizers[p][m].apply_gradients(zip(critic_grad, self.all_critics[p][m].trainable_variables))
+                        self.all_actor_optimizers[p][m].apply_gradients(zip(actor_grad, self.all_actors[p][m].trainable_variables))
 
-                    # update the target networks
-                    tc_new_weights, ta_new_weights = ddpgagent.update_target(self.conf.tau, self.all_target_critics[p][m].weights, 
-                                                                            self.all_critics[p][m].weights, self.all_target_actors[p][m].weights, 
-                                                                            self.all_actors[p][m].weights)
-                    self.all_target_actors[p][m].set_weights(ta_new_weights)
-                    self.all_target_critics[p][m].set_weights(tc_new_weights)
+                        # update the target networks
+                        tc_new_weights, ta_new_weights = ddpgagent.update_target(self.conf.tau, self.all_target_critics[p][m].weights, 
+                                                                                self.all_critics[p][m].weights, self.all_target_actors[p][m].weights, 
+                                                                                self.all_actors[p][m].weights)
+                        self.all_target_actors[p][m].set_weights(ta_new_weights)
+                        self.all_target_critics[p][m].set_weights(tc_new_weights)
         
         if is_weighted_fed_enabled(self.conf, training_episode):
             self.fed_weight_sums = tf.reduce_sum(self.fed_weights, axis=1)
 
-
     def train_all_models_federated(self, i, training_episode):
         # apply FL aggregation method, and reapply gradients to models
-        if self.debug_enabled:
-            log.info(f"Applying {self.conf.fed_method} at step {i}")
-            if is_weighted_fed_enabled(self.conf, training_episode):
-                log.info(f"using weighted sums {[self.fed_weight_sums]}")
         for p in range(self.num_platoons):
             all_rbuffers_are_filled = True
             if False in self.all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
@@ -335,6 +333,11 @@ class Trainer:
                 break
         
         if all_rbuffers_are_filled:
+            if self.debug_enabled:
+                log.info(f"Applying {self.conf.fed_method} at step {i}")
+                if is_weighted_fed_enabled(self.conf, training_episode):
+                    log.info(f"using weighted sums {[self.fed_weight_sums]}")
+
             if is_weighted_fed_enabled(self.conf, training_episode):
                 actor_avg_grads = self.fed_server.get_weighted_avg_grads(self.all_actor_grad_list, self.fed_weight_sums)
                 critic_avg_grads = self.fed_server.get_weighted_avg_grads(self.all_critic_grad_list, self.fed_weight_sums)
@@ -443,8 +446,31 @@ class Trainer:
         plt.plot(reward_list, label=f"Platoon {p+1} Vehicle {m+1}")
 
 
-def get_fed_enabled_mask(conf: config.Config) -> bool:
+def is_fed_enabled(conf: config.Config) -> bool:
     return (conf.fed_method == conf.interfrl or conf.fed_method == conf.intrafrl) and (conf.framework == conf.dcntrl)
 
 def is_weighted_fed_enabled(conf: config.Config, training_episode: int) -> bool:
     return (conf.weighted_average_enabled and training_episode >= conf.weighted_window)
+
+def is_valid_update_episode(conf: config.Config, training_episode: int) -> bool:
+    """Check if the current episode is valid for a federated update
+
+    Args:
+        training_episode (int): the current episode
+
+    Returns:
+        bool: true if the episode is valid
+    """
+    return conf.fed_enabled and (training_episode % conf.fed_update_count) == 0 and training_episode <= conf.fed_cutoff_episode
+
+def is_valid_update_step(conf: config.Config, training_step: int) -> bool:
+    """Check if the current training step is valid for a federated update
+
+    Args:
+        conf (config.Config): the configuration class
+        training_step (int): the current step
+
+    Returns:
+        bool: true if the current step is valid
+    """
+    return (training_step % conf.fed_update_delay_steps) == 0

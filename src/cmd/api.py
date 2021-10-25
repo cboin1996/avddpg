@@ -50,9 +50,9 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--seed", type=int, default=config.random_seed, 
         help="the seed globally set across the experiment. If not set, will take whatever is in src/config.py")
     add_tr.add_argument("--method", choices=[config.exact, config.euler], help="Discretization method.")
-    add_tr.add_argument("--rand_states", type=bool, help="whether to initialize the vehicle environments with random states or what is in config.py.")
-    add_tr.add_argument("--render", type=bool, help="Whether to output the environment states to console.")
-    add_tr.add_argument("--tr_debug", type=bool, help="Whether to enable debug mode for the trainer.")
+    add_tr.add_argument("--rand_states", type=bool, help='whether to initialize the vehicle environments with random states or what is in config.py. Pass "" to turn false!')
+    add_tr.add_argument("--render", type=bool, help='Whether to output the environment states to console. Pass "" to turn false!')
+    add_tr.add_argument("--tr_debug", type=bool, help='Whether to enable debug mode for the trainer. Pass "" to turn false!')
     add_tr.add_argument("--pl_num", type=int, help="How many platoons to simulate with.")
     add_tr.add_argument("--pl_size", type=int, help="How many vehicles in each platoon.")
 
@@ -61,7 +61,7 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--fed_update_count", type=int, help="number of episodes between federated averaging updates")
     add_tr.add_argument("--fed_cutoff_ratio", type=float, help="the ratio to toral number of episodes at which FRL is cutoff")
     add_tr.add_argument("--fed_update_delay", type=float, help="the time in second between updates during a training episode for FRL.")
-    add_tr.add_argument("--fed_weight_enabled", type=bool, default=False, help="whether to use weighted averaging FRL.")
+    add_tr.add_argument("--fed_weight_enabled", type=bool, default=False, help='whether to use weighted averaging FRL. Pass "" to turn false!')
     add_tr.add_argument("--fed_weight_window", type=int, help="how many cumulative episodes to average for calculating the weights.")
 
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
