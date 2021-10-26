@@ -516,10 +516,16 @@ class Vehicle:
         self.headway = 0
 
         if self.evaluator_states_enabled:
-            self.x = np.array([self.reset_ep_eval_max, # intial gap error (m)
-                        self.reset_ev_eval_max, # initial velocity error
-                        self.reset_a_eval_max, # initial accel of this vehicle
-                        a_lead])   # initial accel of leading vehicle
+            if self.rand_states:
+                self.x = np.array([self.reset_ep_eval_max, # intial gap error (m)
+                            self.reset_ev_eval_max, # initial velocity error
+                            self.reset_a_eval_max, # initial accel of this vehicle
+                            a_lead])   # initial accel of leading vehicle
+            else:
+                self.x = np.array([self.reset_ep_max, # intial gap error (m)
+                            self.reset_max_ev, # initial velocity error
+                            self.reset_max_a, # initial accel of this vehicle
+                            a_lead])   # initial accel of leading vehicle
         else:
             if self.rand_states == True:
                 self.x = np.array([util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.reset_ep_max, config=self.config), # intial gap error (m)
