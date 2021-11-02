@@ -28,8 +28,6 @@ def set_args_to_config(args, config: config.Config):
         config.fed_update_delay = args.fed_update_delay
         config.fed_update_delay_steps = int(config.fed_update_delay/config.sample_rate)
 
-    print(hasattr(args, "fed_weight_enabled"), args.fed_weight_enabled)
-
     if hasattr(args, "fed_weight_enabled") and args.fed_weight_enabled is not None:
         config.weighted_average_enabled = args.fed_weight_enabled
     
