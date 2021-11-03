@@ -16,6 +16,12 @@ def set_args_to_config(args, config: config.Config):
         config.num_platoons = args.pl_num
     if hasattr(args, "pl_size") and args.pl_size is not None:
         config.pl_size = args.pl_size
+    if hasattr(args, "buffer_size") and args.buffer_size is not None:
+        config.buffer_size = args.buffer_size
+    if hasattr(args, "actor_lr") and args.actor_lr is not None:
+        config.actor_lr = args.actor_lr
+    if hasattr(args, "critic_lr") and args.critic_lr is not None:
+        config.critic_lr = args.critic_lr
     if hasattr(args, "fed_method") and args.fed_method is not None:
         config.fed_method = args.fed_method
     if hasattr(args, "fed_update_count") and args.fed_update_count is not None:
@@ -53,7 +59,9 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--tr_debug", type=bool, help='Whether to enable debug mode for the trainer. Pass "" to turn false!')
     add_tr.add_argument("--pl_num", type=int, help="How many platoons to simulate with.")
     add_tr.add_argument("--pl_size", type=int, help="How many vehicles in each platoon.")
-
+    add_tr.add_argument("--buffer_size", type=int, help="The number of samples to include in the replay buffer!")
+    add_tr.add_argument("--actor_lr", type=float, help="The learning rate of the actor!")
+    add_tr.add_argument("--critic_lr", type=float, help="The learning rate of the critic!")
 
     add_tr.add_argument("--fed_method", choices=[config.interfrl, config.intrafrl, config.normal])    
     add_tr.add_argument("--fed_update_count", type=int, help="number of episodes between federated averaging updates")
