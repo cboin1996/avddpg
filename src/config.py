@@ -76,7 +76,7 @@ class Config():
         self.normal = 'normal' 
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
-        self.rand_states = False # whether or not to use random initial states for each environment reset.
+        self.rand_states = True # whether or not to use random initial states for each environment reset.
 
         self.total_time_steps = 1000000
 
