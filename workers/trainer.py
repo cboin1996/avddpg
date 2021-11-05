@@ -289,7 +289,7 @@ class Trainer:
                     # append gradients for avg'ing if federated enabled
                     if self.conf.fed_method == self.conf.interfrl:
                         if is_weighted_fed_enabled(self.conf, training_episode):
-                            avg_cumulative_reward = 1/np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
+                            avg_cumulative_reward = 1/np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:]) # investigate this p,m.. should it be m,p?
                             self.all_actor_grad_list[m][p] = np.multiply(actor_grad, avg_cumulative_reward)
                             self.all_critic_grad_list[m][p] = np.multiply(critic_grad, avg_cumulative_reward)
                             self.fed_weights[m][p] = avg_cumulative_reward
@@ -323,6 +323,25 @@ class Trainer:
         
         if is_weighted_fed_enabled(self.conf, training_episode):
             self.fed_weight_sums = tf.reduce_sum(self.fed_weights, axis=1)
+    
+    def aggregate_params(self, idx1: int, idx2: int, training_episode: str, actor_grad, critic_grad) -> None:
+        """Aggregate the parameters using the appropriate federation method.
+
+        Args:
+            idx1 (int): the idx to use for the system. for interfrl, the idx of the model is passed in
+            idx2 (int): the idx to use for the system. for interfrl, the idx of the system is passed in
+            training_episode (str): the current training episode
+            actor_grad (list): the gradients of the actor
+            critic_grad (list): the gradients of the critic
+        """
+        if is_weighted_fed_enabled(self.conf, training_episode):
+            avg_cumulative_reward = 1/np.mean(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:]) # calculate the metric for weighting
+            self.all_actor_grad_list[idx1][idx2] = np.multiply(actor_grad, avg_cumulative_reward)
+            self.all_critic_grad_list[idx1][idx2] = np.multiply(critic_grad, avg_cumulative_reward)
+            self.fed_weights[idx1][idx2] = avg_cumulative_reward
+        else:
+            self.all_actor_grad_list[idx1][idx2] = actor_grad
+            self.all_critic_grad_list[idx1][idx2] = critic_grad
 
     def train_all_models_federated(self, i, training_episode):
         # apply FL aggregation method, and reapply gradients to models
