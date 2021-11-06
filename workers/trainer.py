@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from tensorflow.python.keras.backend import gradients
 from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
 from workers import evaluator
@@ -42,7 +43,11 @@ class Trainer:
         self.num_platoons = self.conf.num_platoons
 
         self.all_actor_grad_list = []
+        self.all_actor_weight_list = []
+
         self.all_critic_grad_list = []
+        self.all_critic_weight_list = []
+
         self.fed_weights = []
         self.fed_weight_sums = []
 
@@ -153,7 +158,7 @@ class Trainer:
 
             self.all_rbuffers_filled.append(rbuffers_filled)
         
-        self.initialize_gradlists_for_federation()
+        self.initialize_lists_for_federation()
 
         assert len(set(self.all_num_actions)) == 1 # make sure the action and state spaces are identical across the platoons
         assert len(set(self.all_num_states)) == 1
@@ -162,41 +167,44 @@ class Trainer:
         self.num_states = self.all_num_states[0]
         self.actions = np.zeros((self.num_platoons, self.num_models, self.num_actions)) 
 
-    def initialize_gradlists_for_federation(self):
+    def initialize_lists_for_federation(self):
         """ Initialization for FRL methods 
         Note that we iterate models, then platoons for HFRL. This is to save having to reshape the data later, as we wish to avg 
         Gradients across the common vehicles in each platoon .. AVERAGE(platoon1_vehicle1:platoonN_vehicle1)"""
 
         if self.conf.fed_method == self.conf.interfrl:
-            log.info(f"{self.conf.fed_method} enabled (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}), disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
-            for _ in range(self.num_models):
-                actor_grad_list = []
-                critic_grad_list = []
-                model_weights = []
-                for _ in range(self.num_platoons):
-                    actor_grad_list.append([])
-                    critic_grad_list.append([])
-                    model_weights.append(0)
-
-                self.all_actor_grad_list.append(actor_grad_list)
-                self.all_critic_grad_list.append(critic_grad_list)
-                self.fed_weights.append(model_weights)
+            self.build_lists_for_federation(self.num_models, self.num_platoons)
         
         if self.conf.fed_method == self.conf.intrafrl:
-            log.info(f"{self.conf.fed_method} enabled (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}), disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
-            for _ in range(self.num_platoons):
-                actor_grad_list = []
-                critic_grad_list = []
-                pl_weights = []
+            self.build_lists_for_federation(self.num_platoons, self.num_models)
+    
+    def build_lists_for_federation(self, range1, range2):
+        """Build up the empty lists to use for federated learning
 
-                for _ in range(self.num_models):
-                    actor_grad_list.append([])
-                    critic_grad_list.append([])
-                    pl_weights.append(0)
+        Args:
+            range1 (int): the number of first axis items for the system: for interfrl use the model
+            range2 (int): the number of second axis items for the system: for intrafrl use the platoon
+        """
+        log.info(f"{self.conf.fed_method} enabled (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}), disabling at episode {self.conf.fed_cutoff_episode} with updates every {self.conf.fed_update_count} episodes!")
+        for _ in range(range1):
+            actor_grad_list = []
+            actor_weight_list = []
+            critic_grad_list = []
+            critic_weight_list = []
 
-                self.all_actor_grad_list.append(actor_grad_list)
-                self.all_critic_grad_list.append(critic_grad_list)
-                self.fed_weights.append(pl_weights)
+            weight_factors = []
+            for _ in range(range2):
+                actor_grad_list.append([])
+                actor_weight_list.append([])
+                critic_grad_list.append([])
+                critic_weight_list.append([])
+                weight_factors.append(0)
+
+            self.all_actor_grad_list.append(actor_grad_list)
+            self.all_actor_weight_list.append(actor_weight_list)
+            self.all_critic_grad_list.append(critic_grad_list)
+            self.all_critic_weight_list.append(critic_weight_list)
+            self.fed_weights.append(weight_factors)
 
     def run(self):
         """
@@ -209,7 +217,7 @@ class Trainer:
         """
         for ep in range(self.conf.number_of_episodes):
             if is_valid_update_episode(self.conf, ep) and is_fed_enabled(self.conf):
-                log.info(f"Applying federated averaging (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}) at episode {ep} w/ delay {self.conf.fed_update_delay}s (every {self.conf.fed_update_delay_steps} steps).")
+                log.info(f"Applying federated averaging (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}, agg_method = {self.conf.aggregation_method}) at episode {ep} w/ delay {self.conf.fed_update_delay}s (every {self.conf.fed_update_delay_steps} steps).")
             
             if is_fed_enabled(self.conf) and ep == self.conf.fed_cutoff_episode + 1:
                 log.info(f"Turned off federated learning as cutoff ratio [{self.conf.fed_cutoff_ratio}] ({self.conf.fed_cutoff_episode} episodes) passed at ep [{ep}]")
@@ -233,8 +241,10 @@ class Trainer:
                     all_terminals.append(terminal)
 
                 self.train_all_models(all_rewards, all_states, all_prev_states, ep, i)
-                if is_fed_enabled(self.conf) and is_valid_update_episode(self.conf, ep) and is_valid_update_step(self.conf, i):
-                    self.train_all_models_federated(i, ep)
+                if is_valid_step_for_federated_training_with_gradients(self.conf, ep, i):
+                    self.train_all_models_federated_gradients(i, ep)
+                if is_valid_step_for_federated_training_with_weights(self.conf, ep, i):
+                    self.train_all_models_federated_weights(i, ep)
                     
                 if True in all_terminals: # break if any of the platoons have failed
                     break
@@ -272,11 +282,21 @@ class Trainer:
         return states, rewards, terminal
 
     def train_all_models(self, all_rewards, all_states, all_prev_states, training_episode, training_step):
+        """Main method responsible for advancing the environment one timestep, aggregating parameters for FRL,
+        and lastly performing local training steps
+        TODO: Finish this comment
+        Args:
+            all_rewards (): [description]
+            all_states ([type]): [description]
+            all_prev_states ([type]): [description]
+            training_episode ([type]): [description]
+            training_step ([type]): [description]
+        """
         for p in range(self.num_platoons):
             for m in range(self.num_models):
-                self.all_rbuffers[p][m].add((all_prev_states[p][m], 
-                                        self.actions[p][m], 
-                                        all_rewards[p][m], 
+                self.all_rbuffers[p][m].add((all_prev_states[p][m],
+                                        self.actions[p][m],
+                                        all_rewards[p][m],
                                         all_states[p][m]))
 
                 self.all_episodic_reward_counters[p][m] += all_rewards[p][m]
@@ -285,27 +305,14 @@ class Trainer:
                     # train and update the actor critics
                     critic_grad, actor_grad = self.learn(self.all_rbuffers[p][m], self.all_actors[p][m], self.all_critics[p][m], 
                                                     self.all_target_actors[p][m], self.all_target_critics[p][m])
-
+                    actor_weights = self.all_actors[p][m].weights
+                    critic_weights = self.all_critics[p][m].weights
                     # append gradients for avg'ing if federated enabled
                     if self.conf.fed_method == self.conf.interfrl:
-                        if is_weighted_fed_enabled(self.conf, training_episode):
-                            avg_cumulative_reward = 1/np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:]) # investigate this p,m.. should it be m,p?
-                            self.all_actor_grad_list[m][p] = np.multiply(actor_grad, avg_cumulative_reward)
-                            self.all_critic_grad_list[m][p] = np.multiply(critic_grad, avg_cumulative_reward)
-                            self.fed_weights[m][p] = avg_cumulative_reward
-                        else:
-                            self.all_actor_grad_list[m][p] = actor_grad
-                            self.all_critic_grad_list[m][p] = critic_grad
+                        self.aggregate_params(m, p, training_episode, actor_grad, critic_grad, actor_weights, critic_weights)
 
                     elif self.conf.fed_method == self.conf.intrafrl:
-                        if is_weighted_fed_enabled(self.conf, training_episode):
-                            avg_cumulative_reward = 1/np.mean(self.all_ep_reward_lists[p][m][-self.conf.weighted_window:])
-                            self.all_actor_grad_list[p][m] = np.multiply(actor_grad, avg_cumulative_reward)
-                            self.all_critic_grad_list[p][m] = np.multiply(critic_grad, avg_cumulative_reward)
-                            self.fed_weights[p][m] = avg_cumulative_reward
-                        else:
-                            self.all_actor_grad_list[p][m] = actor_grad
-                            self.all_critic_grad_list[p][m] = critic_grad
+                        self.aggregate_params(p, m, training_episode, actor_grad, critic_grad, actor_weights, critic_weights)
 
                     # local updates should only occur when global updates do not occur
                     if not is_fed_enabled(self.conf) or not is_valid_update_step(self.conf, training_step):
@@ -324,7 +331,7 @@ class Trainer:
         if is_weighted_fed_enabled(self.conf, training_episode):
             self.fed_weight_sums = tf.reduce_sum(self.fed_weights, axis=1)
     
-    def aggregate_params(self, idx1: int, idx2: int, training_episode: str, actor_grad, critic_grad) -> None:
+    def aggregate_params(self, idx1: int, idx2: int, training_episode: str, actor_grad, critic_grad, actor_weights, critic_weights) -> None:
         """Aggregate the parameters using the appropriate federation method.
 
         Args:
@@ -335,34 +342,50 @@ class Trainer:
             critic_grad (list): the gradients of the critic
         """
         if is_weighted_fed_enabled(self.conf, training_episode):
-            avg_cumulative_reward = 1/np.mean(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:]) # calculate the metric for weighting
-            self.all_actor_grad_list[idx1][idx2] = np.multiply(actor_grad, avg_cumulative_reward)
-            self.all_critic_grad_list[idx1][idx2] = np.multiply(critic_grad, avg_cumulative_reward)
+            avg_cumulative_reward = self.get_weight(idx1, idx2) # calculate the metric for weighting
+            self.all_actor_grad_list[idx1][idx2] = self.compute_weighted_params(actor_grad, avg_cumulative_reward) # get weighted actor params
+            self.all_actor_weight_list[idx1][idx2] = self.compute_weighted_params(actor_weights, avg_cumulative_reward)
+            
+            self.all_critic_grad_list[idx1][idx2] = self.compute_weighted_params(critic_grad, avg_cumulative_reward) # get weighted critic params
+            self.all_critic_weight_list[idx1][idx2] = self.compute_weighted_params(critic_weights, avg_cumulative_reward)
+
             self.fed_weights[idx1][idx2] = avg_cumulative_reward
         else:
             self.all_actor_grad_list[idx1][idx2] = actor_grad
-            self.all_critic_grad_list[idx1][idx2] = critic_grad
+            self.all_actor_weight_list[idx1][idx2] = actor_weights
 
-    def train_all_models_federated(self, i, training_episode):
-        # apply FL aggregation method, and reapply gradients to models
-        for p in range(self.num_platoons):
-            all_rbuffers_are_filled = True
-            if False in self.all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
-                all_rbuffers_are_filled = False
-                break
-        
-        if all_rbuffers_are_filled:
+            self.all_critic_grad_list[idx1][idx2] = critic_grad
+            self.all_critic_weight_list[idx1][idx2] = critic_weights
+
+    def get_weight(self, idx1, idx2):
+        """The weight criteria for a single model's weight
+
+        Args:
+            idx1 (int): the first idx to use for the system, for interfrl the idx of the model is passed in
+            idx2 (int): the second idx to use for the system, for interfrl the idx of the system is passed in 
+
+        Returns:
+            float: the weight to use for performing weighted averaging
+        """
+        return 1/np.mean(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:]) # calculate the metric for weighting
+
+    def compute_weighted_params(self, params, weight):
+        return np.multiply(params, weight)
+
+    def train_all_models_federated_gradients(self, i, training_episode):
+        # apply FL aggregation method, and reapply gradients to models       
+        if self.are_all_rbuffers_filled():
             if self.debug_enabled:
-                log.info(f"Applying {self.conf.fed_method} at step {i}")
+                log.info(f"Applying {self.conf.fed_method} using {self.conf.aggregation_method} at step {i}")
                 if is_weighted_fed_enabled(self.conf, training_episode):
                     log.info(f"using weighted sums {[self.fed_weight_sums]}")
 
             if is_weighted_fed_enabled(self.conf, training_episode):
-                actor_avg_grads = self.fed_server.get_weighted_avg_grads(self.all_actor_grad_list, self.fed_weight_sums)
-                critic_avg_grads = self.fed_server.get_weighted_avg_grads(self.all_critic_grad_list, self.fed_weight_sums)
+                actor_avg_grads = self.fed_server.get_weighted_avg_params(self.all_actor_grad_list, self.fed_weight_sums)
+                critic_avg_grads = self.fed_server.get_weighted_avg_params(self.all_critic_grad_list, self.fed_weight_sums)
             else:
-                actor_avg_grads = self.fed_server.get_avg_grads(self.all_actor_grad_list)
-                critic_avg_grads = self.fed_server.get_avg_grads(self.all_critic_grad_list)
+                actor_avg_grads = self.fed_server.get_avg_params(self.all_actor_grad_list)
+                critic_avg_grads = self.fed_server.get_avg_params(self.all_critic_grad_list)
 
             for p in range(self.num_platoons):
                 for m in range(self.num_models):
@@ -379,6 +402,43 @@ class Trainer:
                                                                             self.all_target_actors[p][m].weights, self.all_actors[p][m].weights)
                     self.all_target_actors[p][m].set_weights(ta_new_weights)
                     self.all_target_critics[p][m].set_weights(tc_new_weights)
+    
+    def train_all_models_federated_weights(self, training_step, training_episode):
+        # apply FL aggregation method, and reapply gradients to models
+        if self.are_all_rbuffers_filled():
+            if self.debug_enabled:
+                log.info(f"Applying {self.conf.fed_method} using {self.conf.aggregation_method} at step {training_step}")
+                if is_weighted_fed_enabled(self.conf, training_episode):
+                    log.info(f"using weighted sums {[self.fed_weight_sums]}") 
+            
+            if is_weighted_fed_enabled(self.conf, training_episode):
+                actor_avg_weights = self.fed_server.get_weighted_avg_params(self.all_actor_weight_list, self.fed_weight_sums)[0]
+                critic_avg_weights = self.fed_server.get_weighted_avg_params(self.all_critic_weight_list, self.fed_weight_sums)[0]
+            else:
+                actor_avg_weights = self.fed_server.get_avg_params(self.all_actor_weight_list)[0]
+                critic_avg_weights = self.fed_server.get_avg_params(self.all_critic_weight_list)[0]
+            
+            for p in range(self.num_platoons):
+                for m in range(self.num_models):
+                    self.all_actors[p][m].set_weights(actor_avg_weights)
+                    self.all_critics[p][m].set_weights(critic_avg_weights)
+                    
+                    self.all_target_actors[p][m].set_weights(actor_avg_weights)
+                    self.all_target_critics[p][m].set_weights(critic_avg_weights)
+    
+    def are_all_rbuffers_filled(self) -> bool:
+        """Check if all the replay buffers are filled in the system
+
+        Returns:
+            bool: true if the replay buffers are filled
+        """
+        for p in range(self.num_platoons):
+            all_rbuffers_are_filled = True
+            if False in self.all_rbuffers_filled[p]: # ensure rbuffers have filled for ALL the platoons  
+                all_rbuffers_are_filled = False
+                break
+        
+        return all_rbuffers_are_filled
 
     def learn(self, rbuffer, actor_model, critic_model,
         target_actor, target_critic):   
@@ -468,6 +528,12 @@ class Trainer:
 def is_fed_enabled(conf: config.Config) -> bool:
     return (conf.fed_method == conf.interfrl or conf.fed_method == conf.intrafrl) and (conf.framework == conf.dcntrl)
 
+def is_gradient_updates_enabled(conf: config.Config) -> bool:
+    return conf.aggregation_method == conf.gradients
+
+def is_model_weight_updates_enabled(conf: config.Config) -> bool:
+    return conf.aggregation_method == conf.weights
+
 def is_weighted_fed_enabled(conf: config.Config, training_episode: int) -> bool:
     return (conf.weighted_average_enabled and training_episode >= conf.weighted_window)
 
@@ -493,3 +559,35 @@ def is_valid_update_step(conf: config.Config, training_step: int) -> bool:
         bool: true if the current step is valid
     """
     return (training_step % conf.fed_update_delay_steps) == 0
+
+def is_valid_step_for_federated_training_with_gradients(conf, training_episode, training_step):
+    """
+    Args:
+        conf (config.Config): the configuration class
+        training_episode (int): the current training episode
+        training_step (int): the current training step
+
+    Returns:
+        bool : true if:\n
+                1. FRL is enabled\n
+                2. the current episode is a valid FRL episode\n
+                3. the current step in the episode is a valid FRL step\n
+                4. gradient updates are enabled
+    """ 
+    return is_fed_enabled(conf) and is_valid_update_episode(conf, training_episode) and is_valid_update_step(conf, training_step) and is_gradient_updates_enabled(conf)
+
+def is_valid_step_for_federated_training_with_weights(conf, training_episode, training_step):
+    """
+    Args:
+        conf (config.Config): the configuration class
+        training_episode (int): the current training episode
+        training_step (int): the current training step
+
+    Returns:
+        bool : true if:\n
+                1. FRL is enabled\n
+                2. the current episode is a valid FRL episode\n
+                3. the current step in the episode is a valid FRL step\n
+                4. model weights updates are enabled
+    """ 
+    return is_fed_enabled(conf) and is_valid_update_episode(conf, training_episode) and is_valid_update_step(conf, training_step) and is_model_weight_updates_enabled(conf)

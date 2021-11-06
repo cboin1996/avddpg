@@ -39,6 +39,8 @@ def set_args_to_config(args, config: config.Config):
     
     if hasattr(args, "fed_weight_window") and args.fed_weight_window is not None:
         config.weighted_window = args.fed_weight_window
+    if hasattr(args, "fed_agg_method") and args.fed_agg_method is not None:
+        config.aggregation_method = args.fed_agg_method
     
     return config
 def get_cmdl_args(args: list, description: str, config: config.Config):
@@ -69,7 +71,7 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--fed_update_delay", type=float, help="the time in second between updates during a training episode for FRL.")
     add_tr.add_argument("--fed_weight_enabled", type=bool, default=False, help='whether to use weighted averaging FRL. Pass "" to turn false!')
     add_tr.add_argument("--fed_weight_window", type=int, help="how many cumulative episodes to average for calculating the weights.")
-
+    add_tr.add_argument("--fed_agg_method", type=str, choices=["gradients", "weights"], help="which method to use for federated aggregation")
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
     add_esim.add_argument("exp_path", type=str, help="path to experiment directory")
     add_esim.add_argument("--sim_debug", type=bool, default=False, help="whether to launch the simulator step by step or not.")

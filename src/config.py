@@ -5,6 +5,8 @@ class Config():
     modelA = 'ModelA'
     modelB = 'ModelB'
     model = modelB
+    weights = "weights"
+    gradients = "gradients"
     
     res_dir = os.path.join('.outputs')
     param_path = "conf.json"
@@ -31,6 +33,7 @@ class Config():
         self.res_dir = self.res_dir
         self.report_dir = "reports"
         self.param_path = self.param_path
+        self.aggregation_method = self.gradients
 
         """Environment"""
         self.num_platoons = 1 # the number of platoons for training and simulation
