@@ -1,5 +1,6 @@
 import os, sys
 import logging
+from numpy.core.shape_base import stack
 import tensorflow as tf
 import numpy as np
 
@@ -44,7 +45,7 @@ class Server:
             logger.info(f"System params: {system_params}")
 
         for p in range(len(system_params)):
-            multi_model_params_stacked = np.stack(system_params[p], axis=1)  # stacks the params along the first axis..
+            multi_model_params_stacked = np.stack(np.array(system_params[p], dtype=object), axis=1)  # stacks the params along the first axis..
                                                                                #s.t. each model layer's params are now adjacent
             if self.debug:
                 logger.info(f"")
@@ -96,7 +97,7 @@ class Server:
             logger.info(f"System params: {system_params}")
 
         for p in range(len(system_params)):
-            multi_model_params_stacked = np.stack(system_params[p], axis=1)  # stacks the params along the first axis..
+            multi_model_params_stacked = np.stack(np.array(system_params[p], dtype=object), axis=1)  # stacks the params along the first axis..
                                                                                #s.t. each model layer's params are now adjacent
             system_weight_sum = weight_sums[p]
             if self.debug:
@@ -106,7 +107,7 @@ class Server:
 
             for i in range(len(multi_model_params_stacked)):
                 stacked_layer_tensors = tf.stack(multi_model_params_stacked[i], axis=0) # stack all the layers for the models into single tensor
-                weighted_layer_avg = tf.math.scalar_mul(1 / system_weight_sum, tf.reduce_sum(stacked_layer_tensors, axis=0))
+                weighted_layer_avg = tf.math.scalar_mul(tf.cast(1 / system_weight_sum, tf.float32), tf.reduce_sum(stacked_layer_tensors, axis=0))
                 if self.debug:
                     logger.info(f"\t------Layer [{i}]------")
                     logger.info(f"\t\tweighted params:\n{stacked_layer_tensors}")
