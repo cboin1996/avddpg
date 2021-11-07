@@ -1,5 +1,5 @@
 # Requirements
-tensorflow==2.3.0
+tensorflow==2.4.1
 graphviz==0.13.2
 pydot==1.4.2
 pandas
