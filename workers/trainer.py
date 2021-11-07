@@ -367,10 +367,10 @@ class Trainer:
         Returns:
             float: the weight to use for performing weighted averaging
         """
-        return 1/np.mean(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:], dtype=np.float32) # calculate the metric for weighting
+        return 1/np.mean(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:]) # calculate the metric for weighting
 
     def compute_weighted_params(self, params, weight):
-        return np.multiply(params, weight)
+        return np.multiply(np.array(params, dtype=object), weight)
 
     def train_all_models_federated_gradients(self, i, training_episode):
         # apply FL aggregation method, and reapply gradients to models       
