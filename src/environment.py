@@ -26,8 +26,8 @@ class Platoon:
         self.rand_states = rand_states
         self.evaluator_states_enabled = evaluator_states_enabled
 
-        self.state_lbs = {0: "ep", 1 : "ev", 2 : "a", 3 : "a-1"}
-        self.exog_lbl = 'u'
+        self.state_lbs = {0: "$e_{pi}$", 1 : "$e_{vi}$", 2 : "$a_i$", 3 : "$a_{i-1}$"}
+        self.exog_lbl = '$u_i$'
         self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
         self.pl_leader_tau = self.config.pl_leader_tau
 
