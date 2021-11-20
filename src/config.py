@@ -94,6 +94,7 @@ class Config():
         self.fed_cutoff_episode  = int(self.fed_cutoff_ratio * self.number_of_episodes)
         self.centrl_hidd_mult = 1.2
         
+        self.reward_averaging_window = 40
         # Learning rate for actor-critic models
         self.critic_lr = 0.0005
         self.actor_lr = 0.00005
@@ -129,8 +130,11 @@ class Config():
         self.t_critic_weights = f'target_critic_weights{self.img_tag}.h5'
 
         self.pl_tag = "_p%s"
+        self.seed_tag = "_seed%s"
         self.fig_path = f"reward_curve{self.pl_tag}.png"
-        
+        self.avg_ep_reward_path = f"avg_ep_reward_{self.seed_tag}.csv"
+        self.ep_reward_path = f"ep_reward_{self.seed_tag}.csv"
+
         self.zerofig_name = "zero"
         self.guasfig_name = "guassian"
         self.stepfig_name = "step"

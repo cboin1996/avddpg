@@ -10,6 +10,9 @@ def set_args_to_config(args, config: config.Config):
         config.method = args.method
     if hasattr(args, "rand_states") and args.rand_states is not None:
         config.rand_states = args.rand_states
+    if hasattr(args, "total_time_steps") and args.total_time_steps is not None:
+        config.total_time_steps = args.total_time_steps
+        config.number_of_episodes = int(args.total_time_steps/config.steps_per_episode)
     if hasattr(args, "render") and args.render is not None:
         config.show_env = args.render
     if hasattr(args, "pl_num") and args.pl_num is not None:
@@ -29,6 +32,8 @@ def set_args_to_config(args, config: config.Config):
     if hasattr(args, "fed_cutoff_ratio") and args.fed_cutoff_ratio is not None:
         config.fed_cutoff_ratio = args.fed_cutoff_ratio
         config.fed_cutoff_episode  = int(config.fed_cutoff_ratio * config.number_of_episodes)
+
+
 
     if hasattr(args, "fed_update_delay") and args.fed_update_delay is not None:
         config.fed_update_delay = args.fed_update_delay
@@ -57,6 +62,7 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
         help="the seed globally set across the experiment. If not set, will take whatever is in src/config.py")
     add_tr.add_argument("--method", choices=[config.exact, config.euler], help="Discretization method.")
     add_tr.add_argument("--rand_states", type=bool, help='whether to initialize the vehicle environments with random states or what is in config.py. Pass "" to turn false!')
+    add_tr.add_argument("--total_time_steps", type=int, help='The number of training time steps. Usually 1000000 leads to good results')
     add_tr.add_argument("--render", type=bool, help='Whether to output the environment states to console. Pass "" to turn false!')
     add_tr.add_argument("--tr_debug", type=bool, help='Whether to enable debug mode for the trainer. Pass "" to turn false!')
     add_tr.add_argument("--pl_num", type=int, help="How many platoons to simulate with.")

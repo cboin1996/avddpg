@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import pandas as pd
 from tensorflow.python.keras.backend import dtype, gradients
 from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
@@ -484,7 +485,7 @@ class Trainer:
             for m in range(self.num_models):
                 self.all_ep_reward_lists[p][m].append(self.all_episodic_reward_counters[p][m])
 
-                avg_reward = np.mean(self.all_ep_reward_lists[p][m][-40:])
+                avg_reward = np.mean(self.all_ep_reward_lists[p][m][-self.conf.reward_averaging_window:])
                 log.info("Platoon {} Model {} : Episode * {} of {} * Avg Reward is ==> {}".format(p+1, m+1, ep, self.conf.number_of_episodes, avg_reward))
                 self.all_avg_reward_lists[p][m].append(avg_reward)
         print("")
@@ -494,6 +495,8 @@ class Trainer:
             env.close_render()
             
     def run_simulations(self):
+        full_avg_rew_df = None
+        full_rew_df = None
         for p in range(self.num_platoons):
             plt.figure()
             for m in range(self.num_models):
@@ -506,10 +509,23 @@ class Trainer:
             plt.tight_layout()
             plt.savefig(os.path.join(self.base_dir, self.conf.fig_path % (p+1)))
 
-            self.conf.pl_rews_for_simulations.append(evaluator.run(conf=self.conf, actors=self.all_actors[p], path_timestamp=self.base_dir, out='save', pl_idx=p+1) / self.conf.re_scalar)
+            # Generate the dataframes for rewards
+            avg_rew_df, rew_df = self.generate_reward_data(p, self.all_avg_reward_lists[p], self.all_ep_reward_lists[p])
+            if (full_avg_rew_df is None and full_rew_df is None):
+                full_avg_rew_df = avg_rew_df
+                full_rew_df = rew_df
+            else:
+                full_avg_rew_df = full_avg_rew_df.append(avg_rew_df)
+                full_rew_df = full_rew_df.append(rew_df)
 
-    def save_training_results(self, p, m, actor, critic, target_actor, target_critic, reward_list):
+            self.conf.pl_rews_for_simulations.append(evaluator.run(conf=self.conf, actors=self.all_actors[p], path_timestamp=self.base_dir, out='save', pl_idx=p+1) / self.conf.re_scalar)
+        
+        full_avg_rew_df.to_csv(os.path.join(self.base_dir, self.conf.avg_ep_reward_path % (self.conf.random_seed)))
+        full_rew_df.to_csv(os.path.join(self.base_dir, self.conf.ep_reward_path % (self.conf.random_seed)))
+
+    def save_training_results(self, p, m, actor, critic, target_actor, target_critic, avg_ep_reward_list):
         tag = (p+1, m+1)
+        
         actor.save(os.path.join(self.base_dir, self.conf.actor_fname % tag))
         tf.keras.utils.plot_model(actor, to_file=os.path.join(self.base_dir, self.conf.actor_picname % tag), show_shapes=True)
 
@@ -522,7 +538,23 @@ class Trainer:
         target_critic.save(os.path.join(self.base_dir, self.conf.t_critic_fname % tag))
         tf.keras.utils.plot_model(target_critic, to_file=os.path.join(self.base_dir, self.conf.t_critic_picname % tag), show_shapes=True)
 
-        plt.plot(reward_list, label=f"Platoon {p+1} Vehicle {m+1}")
+        plt.plot(avg_ep_reward_list, label=f"Platoon {p+1} Vehicle {m+1}")
+
+    def generate_reward_data(self, pl_idx, pl_avg_ep_reward_list, pl_ep_reward_list):
+        tag = (pl_idx+1)
+        column_labels = [f"Vehicle {m+1}" for m in range(self.num_models)]
+
+        stacked_pl_avg_ep_reward = np.stack(np.array(pl_avg_ep_reward_list, dtype=object), axis=1)
+        stacked_pl_ep_reward = np.stack(np.array(pl_ep_reward_list, dtype=object), axis=1)
+        avg_ep_df = pd.DataFrame(data=stacked_pl_avg_ep_reward, columns=column_labels)
+        avg_ep_df['seed'] = self.conf.random_seed
+        avg_ep_df['platoon'] = tag
+        avg_ep_df['avg window'] = self.conf.reward_averaging_window
+        ep_df = pd.DataFrame(data=stacked_pl_ep_reward, columns=column_labels)
+        ep_df['seed'] = self.conf.random_seed
+        ep_df['platoon'] = tag
+        return avg_ep_df, ep_df
+
 
 
 def is_fed_enabled(conf: config.Config) -> bool:
