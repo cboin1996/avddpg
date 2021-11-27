@@ -83,7 +83,7 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, s
 
         axs[num_rows-1].plot(input_list, label=f"Platoon leader") # overlay platoon leaders transmitted data
         axs[num_rows-1].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {conf.episode_sim_time} s)")
-        axs[num_rows-1].yaxis.set_label_text("u")
+        axs[num_rows-1].yaxis.set_label_text(env.exog_lbl)
         axs[num_rows-1].legend()
         pl_rew = round(np.average(episodic_reward_counters), 3)
 

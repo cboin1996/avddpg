@@ -55,8 +55,11 @@ def run(args):
         controller.run()
     elif args.mode == 'esim': # run eval with that of conf.json
         setup_global_logging_stream(conf)
+        conf_path = os.path.join(args.exp_path, config.Config.param_path)
+        logger.info(f"Loading configuration instance from {conf_path}")
+        conf = util.config_loader(conf_path)
         for p in range(conf.num_platoons):
-            evaluator.run(root_path=args.exp_path, out='save', seed=True, pl_idx=p+1, debug_enabled=args.sim_debug, render=args.sim_render) # already seeded above
+            evaluator.run(conf=conf, root_path=args.exp_path, out='save', seed=True, pl_idx=p+1, debug_enabled=args.sim_debug, render=args.sim_render) # already seeded above
 
     elif args.mode == 'lsim':
         setup_global_logging_stream(conf)

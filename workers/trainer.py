@@ -390,6 +390,8 @@ class Trainer:
 
             for p in range(self.num_platoons):
                 for m in range(self.num_models):
+                    if self.conf.fed_method == self.conf.intrafrl and m == 0:
+                        continue # we dont bother averaging the first vehicle in intra as it is king.
                     if self.conf.fed_method == self.conf.interfrl:
                         self.all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[m], self.all_actors[p][m].trainable_variables))
                         self.all_critic_optimizers[p][m].apply_gradients(zip(critic_avg_grads[m], self.all_critics[p][m].trainable_variables))
@@ -421,6 +423,8 @@ class Trainer:
             
             for p in range(self.num_platoons):
                 for m in range(self.num_models):
+                    if self.conf.fed_method == self.conf.intrafrl and m == 0:
+                        continue # we dont bother averaging the first vehicle in intra as it is king.
                     self.all_actors[p][m].set_weights(actor_avg_weights)
                     self.all_critics[p][m].set_weights(critic_avg_weights)
                     
