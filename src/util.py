@@ -10,11 +10,15 @@ import logging
 import glob
 
 log = logging.getLogger(__name__)
+
 def save_file(fpath, txt):
     with open(fpath, 'w') as f:
         log.info(f"Saving {txt} to : {fpath}")
         f.write(txt)
 
+def read_csv(fp):
+    return pd.read_csv(fp)
+    
 def write_csv_from_df(df, fp):
     log.info("writing..")
     log.info(df.head())

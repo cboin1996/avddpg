@@ -78,10 +78,20 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--fed_weight_enabled", type=bool, default=False, help='whether to use weighted averaging FRL. Pass "" to turn false!')
     add_tr.add_argument("--fed_weight_window", type=int, help="how many cumulative episodes to average for calculating the weights.")
     add_tr.add_argument("--fed_agg_method", type=str, choices=["gradients", "weights"], help="which method to use for federated aggregation")
+
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
     add_esim.add_argument("exp_path", type=str, help="path to experiment directory")
     add_esim.add_argument("--sim_debug", type=bool, default=False, help="whether to launch the simulator step by step or not.")
     add_esim.add_argument("--sim_render", type=bool, help="Whether to output the environment states to console.")
+
+    add_accumr = subparsers.add_parser('accumr', help="run in accumulator mode for reward plotting.")
+    add_accumr.add_argument("--acc_avg", type=int, default=0, choices=[0,1], help="0 launches for cumulative reward, 1 for avg episodic.")
+    add_accumr.add_argument("--acc_debug", type=bool, default=False, help="whether to launch the reward accumulator step by step or not.")
+    add_accumr.add_argument("--acc_nv", type=int, default=1, help="Number of vehicles in the episodic reward table (should be >0).")
+
+    add_accums = subparsers.add_parser('accums', help="run in accumulator mode for simulation plotting.")
+    add_accums.add_argument("--sim_render", type=bool, help="Whether to output the environment states to console.")
+    add_accums.add_argument("--acc_debug", type=bool, default=False, help="whether to launch the reward accumulator step by step or not.")
 
     add_lsim = subparsers.add_parser('lsim', help="run a latex table generator for a single config file")
     add_lsim.add_argument("config_path", type=str, help="path to trained configuration json file")

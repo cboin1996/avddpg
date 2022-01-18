@@ -6,6 +6,8 @@ from src import config, noise, replaybuffer, environment, util
 from agent import model, ddpgagent
 from workers import evaluator
 from src.server import federated
+from src.env import env
+
 import matplotlib.pyplot as plt
 import datetime
 import sys, os
@@ -546,17 +548,17 @@ class Trainer:
 
     def generate_reward_data(self, pl_idx, pl_avg_ep_reward_list, pl_ep_reward_list):
         tag = (pl_idx+1)
-        column_labels = [f"Vehicle {m+1}" for m in range(self.num_models)]
+        column_labels = [env.EPISODIC_REWARD_VEHICLE_COL_TEMPL % (m+1) for m in range(self.num_models)]
 
         stacked_pl_avg_ep_reward = np.stack(np.array(pl_avg_ep_reward_list, dtype=object), axis=1)
         stacked_pl_ep_reward = np.stack(np.array(pl_ep_reward_list, dtype=object), axis=1)
         avg_ep_df = pd.DataFrame(data=stacked_pl_avg_ep_reward, columns=column_labels)
-        avg_ep_df['seed'] = self.conf.random_seed
-        avg_ep_df['platoon'] = tag
-        avg_ep_df['avg window'] = self.conf.reward_averaging_window
+        avg_ep_df[env.EPISODIC_REWARD_SEED_COL] = self.conf.random_seed
+        avg_ep_df[env.EPISODIC_REWARD_PLATOON_COL] = tag
+        avg_ep_df[env.EPISODIC_REWARD_AVGWINDOW_COL] = self.conf.reward_averaging_window
         ep_df = pd.DataFrame(data=stacked_pl_ep_reward, columns=column_labels)
-        ep_df['seed'] = self.conf.random_seed
-        ep_df['platoon'] = tag
+        ep_df[env.EPISODIC_REWARD_SEED_COL] = self.conf.random_seed
+        ep_df[env.EPISODIC_REWARD_PLATOON_COL] = tag
         return avg_ep_df, ep_df
 
 

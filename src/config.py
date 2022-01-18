@@ -7,7 +7,7 @@ class Config():
     model = modelB
     weights = "weights"
     gradients = "gradients"
-    
+    report_dir = "reports"
     res_dir = os.path.join('.outputs')
     param_path = "conf.json"
 
