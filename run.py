@@ -65,7 +65,7 @@ def run(args):
 
     elif args.mode == "accumr":
         setup_global_logging_stream(conf)
-        accumulator.generate_reward_plot(mode=args.acc_avg, n_vehicles=args.acc_nv, timestamp=timestamp)
+        accumulator.generate_reward_plot(n_vehicles=args.acc_nv, timestamp=timestamp)
 
 
     elif args.mode == 'lsim':

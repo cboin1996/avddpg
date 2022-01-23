@@ -85,7 +85,6 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_esim.add_argument("--sim_render", type=bool, help="Whether to output the environment states to console.")
 
     add_accumr = subparsers.add_parser('accumr', help="run in accumulator mode for reward plotting.")
-    add_accumr.add_argument("--acc_avg", type=int, default=0, choices=[0,1], help="0 launches for cumulative reward, 1 for avg episodic.")
     add_accumr.add_argument("--acc_debug", type=bool, default=False, help="whether to launch the reward accumulator step by step or not.")
     add_accumr.add_argument("--acc_nv", type=int, default=1, help="Number of vehicles in the episodic reward table (should be >0).")
 
