@@ -12,7 +12,15 @@ import logging
 
 import warnings
 
-def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, seed=True, pl_idx=None, debug_enabled=False, render=False):
+def run(conf=None, actors=None, 
+        path_timestamp=None, 
+        out=None, 
+        root_path=None, 
+        seed=True, 
+        pl_idx=None, 
+        debug_enabled=False, 
+        render=False,
+        title_off=False):
     log = logging.getLogger(__name__)
     log.info(f"====__--- Launching Evaluator for Platoon {pl_idx}! ---__====")
     if conf is None:
@@ -88,16 +96,17 @@ def run(conf=None, actors=None, path_timestamp=None, out=None, root_path=None, s
         pl_rew = round(np.average(episodic_reward_counters), 3)
 
         pl_title = f"Platoon {pl_idx} {conf.model} {typ} input response\n with cumulative platoon reward of %.3f\n and random seed %s" % (pl_rew, evaluation_seed)
-        if len(episodic_reward_counters) == 1:
-            plt.suptitle(pl_title)
-        else:
-            plt.suptitle(pl_title + f" and cumulative vehicle\nrewards {np.round(episodic_reward_counters, 2)}")
+        if not title_off:
+            if len(episodic_reward_counters) == 1:
+                plt.suptitle(pl_title)
+            else:
+                plt.suptitle(pl_title + f" and cumulative vehicle\nrewards {np.round(episodic_reward_counters, 2)}")
         plt.tight_layout()
 
         if out == 'save':
-            out_file = os.path.join(model_parent_dir, f"res_{typ}{conf.pl_tag % (pl_idx)}.png")
+            out_file = os.path.join(model_parent_dir, f"res_{typ}{conf.pl_tag % (pl_idx)}.svg")
             log.info(f"Generated {typ} simulation plot to -> {out_file}")
-            plt.savefig(out_file)
+            plt.savefig(out_file, dpi=150)
         else:
             
             plt.show()

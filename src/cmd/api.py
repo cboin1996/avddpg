@@ -83,6 +83,7 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_esim.add_argument("exp_path", type=str, help="path to experiment directory")
     add_esim.add_argument("--sim_debug", type=bool, default=False, help="whether to launch the simulator step by step or not.")
     add_esim.add_argument("--sim_render", type=bool, help="Whether to output the environment states to console.")
+    add_esim.add_argument("--title_off", type=bool, default=False, help="Whether to include a title in the plot.")
 
     add_accumr = subparsers.add_parser('accumr', help="run in accumulator mode for reward plotting.")
     add_accumr.add_argument("--acc_debug", type=bool, default=False, help="whether to launch the reward accumulator step by step or not.")

@@ -61,7 +61,10 @@ def run(args):
         logger.info(f"Loading configuration instance from {conf_path}")
         conf = util.config_loader(conf_path)
         for p in range(conf.num_platoons):
-            evaluator.run(conf=conf, root_path=args.exp_path, out='save', seed=True, pl_idx=p+1, debug_enabled=args.sim_debug, render=args.sim_render) # already seeded above
+            evaluator.run(conf=conf, root_path=args.exp_path, out='save', seed=True, 
+                            pl_idx=p+1, debug_enabled=args.sim_debug, 
+                            render=args.sim_render,
+                            title_off=args.title_off) # already seeded above
 
     elif args.mode == "accumr":
         setup_global_logging_stream(conf)
