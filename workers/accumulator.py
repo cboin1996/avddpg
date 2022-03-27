@@ -97,6 +97,7 @@ def plot(df, n_vehicles: int, mode: int, accum_path: str):
             ax.set_xlabel("Training episode")
             ax.set_ylabel(get_y_axis_title(mode))
             ax.legend()
+        plt.rcParams.update({'font.size': 14})
         plt.tight_layout()
         plt.savefig(os.path.join(accum_path, get_mode_tag(mode,f"pl{p_idx+1}reward.svg")), dpi=150)
 
