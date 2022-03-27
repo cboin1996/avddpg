@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from workers import trainer, controller, evaluator
+from workers import trainer, controller, evaluator, accumulator
 from src import config, util, reporter, rand
 from src.cmd import api
 import os 
@@ -48,18 +48,33 @@ def run(args):
                             filemode='w')
 
         setup_global_logging_stream(conf)
-
-        trainer.run(base_dir, timestamp, debug_enabled=args.tr_debug, conf=conf)
+        tr = trainer.Trainer(base_dir, timestamp, debug_enabled=args.tr_debug, conf=conf)
+        tr.initialize()
+        tr.run()
+        
     elif args.mode == 'pid':
         controller.run()
+
     elif args.mode == 'esim': # run eval with that of conf.json
         setup_global_logging_stream(conf)
+        conf_path = os.path.join(args.exp_path, config.Config.param_path)
+        logger.info(f"Loading configuration instance from {conf_path}")
+        conf = util.config_loader(conf_path)
         for p in range(conf.num_platoons):
-            evaluator.run(root_path=args.exp_path, out='save', seed=True, pl_idx=p+1, debug_enabled=args.sim_debug) # already seeded above
+            evaluator.run(conf=conf, root_path=args.exp_path, out='save', seed=True, 
+                            pl_idx=p+1, debug_enabled=args.sim_debug, 
+                            render=args.sim_render,
+                            title_off=args.title_off) # already seeded above
+
+    elif args.mode == "accumr":
+        setup_global_logging_stream(conf)
+        accumulator.generate_reward_plot(n_vehicles=args.acc_nv, timestamp=timestamp)
+
 
     elif args.mode == 'lsim':
         setup_global_logging_stream(conf)
         util.print_dct(util.load_json(args.config_path))
+
     elif args.mode == 'lmany':
         setup_global_logging_stream(conf)
         report_root = os.path.join(root_dir, conf.report_dir)

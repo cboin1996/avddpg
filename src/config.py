@@ -5,7 +5,9 @@ class Config():
     modelA = 'ModelA'
     modelB = 'ModelB'
     model = modelB
-    
+    weights = "weights"
+    gradients = "gradients"
+    report_dir = "reports"
     res_dir = os.path.join('.outputs')
     param_path = "conf.json"
 
@@ -23,12 +25,15 @@ class Config():
         self.fed_method = self.nofrl
         self.framework = self.dcntrl
         self.fed_enabled = (self.fed_method == self.interfrl or self.fed_method == self.intrafrl) and (self.framework == self.dcntrl)
+        self.weighted_average_enabled = True
+        self.weighted_window = 10 # window for calculating the average cumulative reward weight (looks backwards for the given amount of episodes)
         self.fed_update_count = 1 # number of episodes between federated averaging updates
         self.fed_cutoff_ratio = 1.0 # the ratio to toral number of episodes at which FRL is cutoff
         self.fed_update_delay = 0.1 # the time in second between updates during a training episode for FRL.
         self.res_dir = self.res_dir
         self.report_dir = "reports"
         self.param_path = self.param_path
+        self.aggregation_method = self.gradients
 
         """Environment"""
         self.num_platoons = 1 # the number of platoons for training and simulation
@@ -36,18 +41,21 @@ class Config():
         self.pl_leader_reset_a = 0 # max initial acceleration of the platoon leader (used in the calculation for \dot{a_{i-1}}) (bound for uniform, std_dev for normal)
         self.reset_max_u = 0.100 # max initial control input of the platoon leader (used in the calculation for \dot{a_{i-1}}, (bound for uniform, std_dev for normal)
 
-        self.pl_leader_tau = 0.5
+        self.pl_leader_tau = 0.1
         self.exact = 'exact'
         self.euler = 'euler'
-        self.method = self.exact
+        self.method = self.euler
 
-        self.timegap = 1.25
-        self.dyn_coeff = 0.5
-        self.reward_ev_coeff = 0.10
-        self.reward_u_coeff = 0.10
+        self.timegap = 1.0
+        self.dyn_coeff = 0.1
+
+        self.reward_ep_coeff = 0.4
+        self.reward_ev_coeff = 0.2
+        self.reward_u_coeff = 0.2
+        self.reward_jerk_coeff = 0.2
 
         self.max_ep = 20
-        self.max_ev = 10
+        self.max_ev = 20
         
         self.reset_ep_max = 1.5 # max position error upon environment reset
         self.reset_max_ev = 1.5 # max velocity error upon environment reset
@@ -60,8 +68,8 @@ class Config():
         self.action_high =2.5
         self.action_low = -2.5
 
-        self.re_scalar = 0.1 # reward scale
-        self.terminal_reward = 1000
+        self.re_scalar = 1 # reward scale
+        self.terminal_reward = 0.5
 
         """Trainer"""
         self.can_terminate = True
@@ -86,6 +94,7 @@ class Config():
         self.fed_cutoff_episode  = int(self.fed_cutoff_ratio * self.number_of_episodes)
         self.centrl_hidd_mult = 1.2
         
+        self.reward_averaging_window = 40
         # Learning rate for actor-critic models
         self.critic_lr = 0.0005
         self.actor_lr = 0.00005
@@ -121,8 +130,11 @@ class Config():
         self.t_critic_weights = f'target_critic_weights{self.img_tag}.h5'
 
         self.pl_tag = "_p%s"
+        self.seed_tag = "_seed%s"
         self.fig_path = f"reward_curve{self.pl_tag}.png"
-        
+        self.avg_ep_reward_path = f"avg_ep_reward_{self.seed_tag}.csv"
+        self.ep_reward_path = f"ep_reward_{self.seed_tag}.csv"
+
         self.zerofig_name = "zero"
         self.guasfig_name = "guassian"
         self.stepfig_name = "step"
@@ -139,7 +151,7 @@ class Config():
         self.pl_rews_for_simulations = []
         self.index_col = "timestamp"
         self.timestamp = None
-        self.drop_keys_in_report = ["fed_enabled", "modelA", "modelB", "dcntrl", "cntrl", "interfrl", "intrafrl", "hfrl", "vfrl", "nofrl", "res_dir", "report_dir", "param_path", "euler",
+        self.drop_keys_in_report = ["fed_enabled", "weighted_average_enabled", "modelA", "modelB", "dcntrl", "cntrl", "interfrl", "intrafrl", "hfrl", "vfrl", "nofrl", "res_dir", "report_dir", "param_path", "euler",
                                     "exact", "normal", "uniform", "show_env", "actor_fname", "actor_picname", "actor_weights", "critic_fname", "critic_picname",
                                     "critic_weights", "t_actor_fname", "t_actor_picname", "t_actor_weights", "t_critic_fname", "t_critic_picname", 
                                     "t_critic_weights", "fig_path", "zerofig_name", "guasfig_name", "stepfig_name", "rampfig_name", "dirs",
@@ -149,6 +161,7 @@ class Config():
                             "model" : "Whether a 3 (ModelA) of 4 (ModelB) state model",
                             "fed_method" : "Type of federated learning used",
                             "framework" : "Decentralized or centralized",
+                            "weighted_window" : "number of episodes to consider for calculating the weight for averaging",
                             "fed_update_count" : "The number of episodes between a federated averaging update",
                             "fed_update_delay" : "the time in second between updates during a training episode for FRL",
                             "fed_cutoff_ratio" : "The percent of all episodes before ending federated updates",

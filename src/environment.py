@@ -26,8 +26,8 @@ class Platoon:
         self.rand_states = rand_states
         self.evaluator_states_enabled = evaluator_states_enabled
 
-        self.state_lbs = {0: "ep", 1 : "ev", 2 : "a", 3 : "a-1"}
-        self.exog_lbl = 'u'
+        self.state_lbs = {0: "$e_{pi}$", 1 : "$e_{vi}$", 2 : "$a_i$", 3 : "$a_{i-1}$"}
+        self.exog_lbl = '$u_i$'
         self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
         self.pl_leader_tau = self.config.pl_leader_tau
 
@@ -59,15 +59,152 @@ class Platoon:
                 self.followers.append(Vehicle(i, self.config, self.followers[i-1].tau, self.followers[i-1].x[2],
                                                 num_states=self.num_states, num_actions=self.num_actions, rand_states=self.rand_states, 
                                                 evaluator_states_enabled=self.evaluator_states_enabled)) # chain tau and accel in state
-    
-    def render(self):
+
+        # Rendering attr
+        self.viewer = None
+        self.screen_width = 600 * self.num_models
+        self.screen_height = 550
+        self.max_position = 1.2*self.config.max_ep*self.num_models
+        self.min_position = -self.max_position
+        self.world_width = self.max_position - self.min_position
+        self.scale = self.screen_width / self.world_width
+        self.floor = 0
+        self.followers_trans_lst = []
+        self.goal_trans_lst = []
+        self.colors = [[0,0,0], # black
+                       [255, 0, 0], # red
+                       [0,255,0], # green
+                       [0,0,255], # blue
+                       [255,255,0], # yellow
+                       [255,0,255], # magenta 
+                       [0,255,255] # cyan
+                       ]
+        
+        if self.length > len(self.colors):
+            raise ValueError(f"Platoon of length {self.length}, but only have {len(self.colors)}! Add more colors in environment to work with larger platoons in rendering!")
+
+    def render(self, mode="human"):
         output = ""
-        for f in self.followers:
-            output += f"{f.render(str_form=True)} <~ "
+        if self.viewer is None:
+            self._initialize_render()
+
+        cumulative_desired_headway = 0
+        cumulative_headway = 0
+        for f, f_trans, g_trans in zip(self.followers, self.followers_trans_lst, self.goal_trans_lst):
+            output += f"{f.render(str_form=True)} <~ \t\t"
+            cumulative_desired_headway -= f.desired_headway
+            cumulative_headway -= f.headway
+            self.update_rendering(f, f_trans, g_trans, cumulative_desired_headway, cumulative_headway, mode=mode)
+
         print(output, end="\r", flush=True)
-    
 
+    def _initialize_render(self):
+        from gym.envs.classic_control import rendering
+        self.viewer = rendering.Viewer(self.screen_width, self.screen_height)
 
+        # make track
+        res = 100
+        xs = np.linspace(self.min_position, self.max_position, res)
+        ys = np.linspace(self.floor, self.floor, res)
+        xys = list(zip((xs - self.min_position) * self.scale, ys * self.scale))
+        track_height = 0.25 * self.scale
+        self.track = rendering.make_polyline(xys)
+        self.track.set_linewidth(track_height)
+        self.viewer.add_geom(self.track)
+
+        clearance = track_height
+
+        # add hashmarks
+        for mtr in range(0, int(self.world_width)):
+            hash_width = mtr * self.scale
+            hash_height = track_height * 1.2
+            distance_hash = rendering.Line((hash_width, self.floor), (hash_width, hash_height))
+            self.viewer.add_geom(distance_hash)
+
+        for i, follower in enumerate(self.followers):
+            # add a car
+            color_r = self.colors[i][0]
+            color_g = self.colors[i][1]
+            color_b = self.colors[i][2]
+            wheel_size = (follower.height / 3)*self.scale
+            car_clearance = track_height + wheel_size
+
+            l, r, t, b = -(follower.length / 2) * self.scale, (follower.length / 2) * self.scale, follower.height * self.scale, 0 * self.scale
+            car = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
+            car.add_attr(rendering.Transform(translation=(0, car_clearance)))
+            car.set_color(color_r, color_g, color_b)
+            follower_trans = rendering.Transform()
+            car.add_attr(follower_trans)
+            self.viewer.add_geom(car)
+            frontwheel = rendering.make_circle(wheel_size)
+            frontwheel.set_color(0.5, 0.5, 0.5)
+            frontwheel.add_attr(
+                rendering.Transform(translation=((follower.length / 4)*self.scale, car_clearance))
+            )
+            frontwheel.add_attr(follower_trans)
+            self.viewer.add_geom(frontwheel)
+            backwheel = rendering.make_circle(wheel_size)
+            backwheel.add_attr(
+                rendering.Transform(translation=(-(follower.length / 4) * self.scale, car_clearance))
+            )
+            backwheel.add_attr(follower_trans)
+            backwheel.set_color(0.5, 0.5, 0.5)
+            self.viewer.add_geom(backwheel)
+
+            self.followers_trans_lst.append(follower_trans)
+
+            # add a flag to represent the desired headway
+            flagpole_height = follower.height*1.5 * self.scale
+            flagx = 0 * self.scale
+            flagy1 = self.floor * self.scale
+            flagy2 = flagy1 + flagpole_height
+            flagpole = rendering.Line((flagx, flagy1), (flagx, flagy2))
+            flagpole.add_attr(rendering.Transform(translation=(0, clearance)))
+            flagpole_trans = rendering.Transform()
+            flagpole.add_attr(flagpole_trans)
+            self.viewer.add_geom(flagpole)
+
+            flag_banner_top = 0.4 * self.scale
+            flag_banner_bottom = 0.3 * self.scale
+            flag_banner_width  = 0.8 * self.scale
+            flag = rendering.FilledPolygon(
+                [(flagx, flagy2), (flagx, flagy2 - flag_banner_top), (flagx + flag_banner_width, flagy2 - flag_banner_bottom)]
+            )
+            flag.set_color(color_r, color_g, color_b)
+            flag.add_attr(
+                rendering.Transform(translation=(0, clearance))
+            )
+            flag.add_attr(flagpole_trans)
+            self.viewer.add_geom(flag)
+            self.goal_trans_lst.append(flagpole_trans)
+
+    def update_rendering(self, f, f_trans, g_trans, desired_headway, headway, mode):
+        """Update the translational offset for a following vehicle
+
+        Args:
+            f (environment.Vehicle): the vehicle
+            f_trans (rendering.Transform): the transform object for the following car
+            g_trans (rendering.Transfrom): the transform object for the following car goal
+            mode (str): the type to render based on openAI gym rendering types of human or rgb_array
+
+        Returns:
+            bool, None: see viewer.render
+        """
+        f_trans.set_translation(
+            (headway - self.min_position) * self.scale, self.floor * self.scale
+        )
+
+        g_trans.set_translation(
+            (desired_headway - self.min_position) * self.scale, self.floor * self.scale
+        )
+
+        return self.viewer.render(return_rgb_array= mode == "rgb_array") 
+
+    def close_render(self):
+        if self.viewer is not None:
+            self.viewer.close()
+            self.viewer = None
+        
     def step(self, actions, leader_exog=None, debug_mode=False):
         """Advances the environment one step
 
@@ -98,6 +235,8 @@ class Platoon:
             rewards = [self.get_reward(states, rewards)]
 
         platoon_done = True if True in terminals else False
+        if platoon_done:
+            log.info(f"Platoon [{self.pl_idx}] is terminating as a vehicle reached terminal state!")
         return states, rewards, platoon_done
     
     def get_exogenous_info(self, idx, leader_exog):
@@ -162,8 +301,8 @@ class Vehicle:
                 tau_lead    (float)    : leading vehicle accell dynamics coeff
                 num_states  (int)      : number of states in the model
                 num_actions (int)      : number of actions in the model
-                a           (float)    : plant stability constant
-                b           (float)    : string stability constant
+                a           (float)    : epi stability constant
+                b           (float)    : evi stability constant
                 x           (np.array) : the state of the system (control error ep, 
                                             control error ev, vehicle acceleration a)
                 A           (np.array) : system matrix  
@@ -175,7 +314,7 @@ class Vehicle:
         evaluator_states_enabled=True):
         """constructor - r, h, L and tau referenced from 
                          https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7146426/
-                         a, b taken from https://www.merl.com/publications/docs/TR2019-142.pdf     
+                         b,c taken from https://www.merl.com/publications/docs/TR2019-142.pdf     
             Arguments:
                 idx (integer) : the vehicle's index in the platoon
                 config (config.Config) : the configuration class
@@ -188,14 +327,22 @@ class Vehicle:
 
         self.idx = idx
         self.h = self.config.timegap
+        self.stand_still = 8 # standstill distance (r)
+        self.height = 1.5 # height of the vehicle
+        self.length = 2.5 # length of the vehicle
         self.T = self.config.sample_rate
         self.tau = self.config.dyn_coeff
         self.tau_lead = tau_lead
-        self.a = self.config.reward_ev_coeff
-        self.b = self.config.reward_u_coeff
+
+        self.a = self.config.reward_ep_coeff
+        self.b = self.config.reward_ev_coeff
+        self.c = self.config.reward_u_coeff
+        self.d = self.config.reward_jerk_coeff
 
         self.max_ep = self.config.max_ep # max ep error before environment returns terminate = True
         self.max_ev = self.config.max_ev # max ev error before environment returns terminate = True
+        self.max_a  = self.config.action_high # map a is limited by the action as the action is the acceleration.
+
         self.reset_ep_max = self.config.reset_ep_max # used as the max +/- value when generating new ep on reset
         self.reset_max_ev = self.config.reset_max_ev  # max +/- value when generating new ev on reset
         self.reset_max_a = self.config.reset_max_a # max +/- value for accel on reset
@@ -218,7 +365,10 @@ class Vehicle:
         self.rand_states = rand_states
 
         self.num_actions = 1
-
+        self.cumulative_accel = 0
+        self.velocity = 0
+        self.desired_headway = 0
+        self.headway = 0
         self.reset(a_lead) # initializes the states 
 
         """ Defining the system matrices """
@@ -288,7 +438,7 @@ class Vehicle:
         self.print_hyps(output="log")
         
     def render(self, str_form=False):
-        output = f"|x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)}|"
+        output = f"| v[{self.idx}] -- x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)}, vel: {round(self.velocity, 2)} -- |"
         if str_form == True:
             return output
         else:
@@ -300,11 +450,17 @@ class Vehicle:
         Args:
             u (float): the action to take
             exog_info (float): the exogenous information given to the vehicle
+            prev_a (float) : the previous acceleration for the vehicle
         """
         self.step_count +=1
         terminal = False
         self.u = u
         self.exog = exog_info 
+
+        norm_ep = abs(self.x[0]) / self.max_ep
+        norm_ev = abs(self.x[1]) / self.max_ev
+        norm_u  = abs(self.u) / abs(self.action_high)
+        jerk =  abs(self.x[2] - self.prev_x[2]) / (2 * self.max_a)
 
         if debug_mode:
             print("====__  Vehicle %s __====" % (self.idx))
@@ -314,28 +470,35 @@ class Vehicle:
             print("\tB Matrix: ", self.B)
             print("\tC Matrix: ", self.C)
             print("\tx before evolution: ", self.x)
+            print("\tprev_x : ", self.prev_x)
             print("--- Reward Equation ---")
-            print("\tx[0]=epi: ", self.x[0])
             print("\ta: ", self.a)
-            print("\tx[1]=evi: ", self.x[1])
+            print("\tx[0]=epi: ", self.x[0])
             print("\tb: ", self.b)
+            print("\tx[1]=evi: ", self.x[1])
+            print("\tc: ", self.c)
             print("\tu: ", self.u)
+            print("\td: ", self.d)
+            print("\tjerk: ", jerk)
             print("\texog: ", self.exog)
 
-        if abs(self.x[0]) > self.config.max_ep and self.config.can_terminate:
+        self.cumulative_accel += self.x[2]
+        self.velocity = self.cumulative_accel * self.T # updates the velocity of the car.
+        self.desired_headway = (self.stand_still + self.h * self.velocity) # updates the desired headway of the car
+        self.headway = self.x[0] + self.desired_headway # updates the headway of the car.
+
+        if (abs(self.x[0]) > self.config.max_ep or abs(self.x[1]) > self.config.max_ev) and self.config.can_terminate:
             terminal=True
             self.reward = self.config.terminal_reward  * self.config.re_scalar
+            log.info(f"Vehicle [{self.idx}] : Terminal state detected at (val, allowed) for ep = ({self.x[0]}, {self.config.max_ep}), ev = ({self.x[1]}, {self.config.max_ev}). Returning reward: {self.reward}")
         else:
-            self.reward = (self.x[0]**2 + self.a*(self.x[1])**2 + self.b*(self.u)**2)  * self.config.re_scalar
+            self.reward = (self.a*(norm_ep) + self.b*(norm_ev) + self.c*(norm_u) + self.d*(jerk))  * self.config.re_scalar
 
-        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info)
-
-
+        self.prev_x = self.x
+        self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info) # state update
 
         if debug_mode:
             print("\tx after evolution: ", self.x)
-
-
 
         return self.x[0:self.num_states], -self.reward, terminal # return only the elements that correspond to the state size.
     
@@ -348,12 +511,21 @@ class Vehicle:
         self.u = 0
         self.exog_info = 0
         self.step_count = 0
+        self.cumulative_accel = 0
+        self.desired_headway = 0
+        self.headway = 0
 
         if self.evaluator_states_enabled:
-            self.x = np.array([self.reset_ep_eval_max, # intial gap error (m)
-                        self.reset_ev_eval_max, # initial velocity error
-                        self.reset_a_eval_max, # initial accel of this vehicle
-                        a_lead])   # initial accel of leading vehicle
+            if self.rand_states:
+                self.x = np.array([self.reset_ep_eval_max, # intial gap error (m)
+                            self.reset_ev_eval_max, # initial velocity error
+                            self.reset_a_eval_max, # initial accel of this vehicle
+                            a_lead])   # initial accel of leading vehicle
+            else:
+                self.x = np.array([self.reset_ep_max, # intial gap error (m)
+                            self.reset_max_ev, # initial velocity error
+                            self.reset_max_a, # initial accel of this vehicle
+                            a_lead])   # initial accel of leading vehicle
         else:
             if self.rand_states == True:
                 self.x = np.array([util.get_random_val(self.config.rand_gen, self.reset_ep_max, std_dev=self.reset_ep_max, config=self.config), # intial gap error (m)
@@ -365,6 +537,8 @@ class Vehicle:
                             self.reset_max_ev, # initial velocity error
                             self.reset_max_a, # initial accel of this vehicle
                             a_lead])   # initial accel of leading vehicle
+
+        self.prev_x = self.x
 
         return (self.x[0:self.num_states])
     
