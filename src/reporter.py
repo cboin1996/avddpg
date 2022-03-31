@@ -42,6 +42,17 @@ def get_figure_str(fig_width, fig_path, fig_label, fig_caption):
         """ % (fig_caption, fig_width, fig_path, fig_label)
     return figure
 
+def get_svg_str(fig_width, fig_path, fig_label, fig_caption):
+    figure =    """
+        \\begin{figure}
+        \caption{%s}
+        \centering
+            \includesvg[width=%s\linewidth]{%s}
+        \label{%s}
+        \end{figure}
+        """ % (fig_caption, fig_width, fig_path, fig_label)
+    return figure
+
 def generate_fig_params(experiment_dir, conf_fname):
     conf = util.config_loader(os.path.join(experiment_dir, conf_fname))
     fig_params = [{"name" : conf.actor_picname % (1, 1),
@@ -57,7 +68,7 @@ def generate_fig_params(experiment_dir, conf_fname):
                 "width" : 0.6,
                 "caption" : f"Platoon {p+1} reward curve for experiment %s"}
                 )
-        fig_params.append({"name" : f"res_guassian{conf.pl_tag}.png" % (p+1),
+        fig_params.append({"name" : f"res_guassian{conf.pl_tag}.svg" % (p+1),
                 "width" : 0.4,
                 "caption" : f"Platoon {p+1} simulation for experiment %s"})
     
