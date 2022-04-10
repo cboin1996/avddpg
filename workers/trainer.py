@@ -220,10 +220,15 @@ class Trainer:
         """
         for ep in range(self.conf.number_of_episodes):
             if is_valid_update_episode(self.conf, ep) and is_fed_enabled(self.conf):
-                log.info(f"Applying federated averaging (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}, agg_method = {self.conf.aggregation_method}) at episode {ep} w/ delay {self.conf.fed_update_delay}s (every {self.conf.fed_update_delay_steps} steps).")
+                log.info(f"Applying federated averaging (weighted = {self.conf.weighted_average_enabled}@{self.conf.weighted_window}," 
+                         + f"agg_method = {self.conf.aggregation_method}) at episode {ep} w/ delay {self.conf.fed_update_delay}s "
+                         + f"(every {self.conf.fed_update_delay_steps} steps).")
             
             if is_fed_enabled(self.conf) and ep == self.conf.fed_cutoff_episode + 1:
                 log.info(f"Turned off federated learning as cutoff ratio [{self.conf.fed_cutoff_ratio}] ({self.conf.fed_cutoff_episode} episodes) passed at ep [{ep}]")
+            
+            if self.conf.fed_method == self.conf.intrafrl:
+                log.info(f"Intrafrl directional averaging enabled={self.conf.intra_directional_averaging}")
 
             self.all_episodic_reward_counters = []
             all_prev_states = []
@@ -392,7 +397,7 @@ class Trainer:
 
             for p in range(self.num_platoons):
                 for m in range(self.num_models):
-                    if self.conf.fed_method == self.conf.intrafrl and m == 0:
+                    if self.conf.fed_method == self.conf.intrafrl and m == 0 and self.conf.intra_directional_averaging:
                         continue # we dont bother averaging the first vehicle in intra as it is king.
                     if self.conf.fed_method == self.conf.interfrl:
                         self.all_actor_optimizers[p][m].apply_gradients(zip(actor_avg_grads[m], self.all_actors[p][m].trainable_variables))
@@ -425,7 +430,7 @@ class Trainer:
             
             for p in range(self.num_platoons):
                 for m in range(self.num_models):
-                    if self.conf.fed_method == self.conf.intrafrl and m == 0:
+                    if self.conf.fed_method == self.conf.intrafrl and m == 0 and self.conf.intra_directional_averaging:
                         continue # we dont bother averaging the first vehicle in intra as it is king.
                     self.all_actors[p][m].set_weights(actor_avg_weights)
                     self.all_critics[p][m].set_weights(critic_avg_weights)

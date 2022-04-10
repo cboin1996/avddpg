@@ -32,8 +32,8 @@ def set_args_to_config(args, config: config.Config):
     if hasattr(args, "fed_cutoff_ratio") and args.fed_cutoff_ratio is not None:
         config.fed_cutoff_ratio = args.fed_cutoff_ratio
         config.fed_cutoff_episode  = int(config.fed_cutoff_ratio * config.number_of_episodes)
-
-
+    if hasattr(args, "intra_directional_averaging") and args.intra_directional_averaging is not None:
+        config.intra_directional_averaging = args.intra_directional_averaging
 
     if hasattr(args, "fed_update_delay") and args.fed_update_delay is not None:
         config.fed_update_delay = args.fed_update_delay
@@ -78,7 +78,8 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--fed_weight_enabled", type=bool, default=False, help='whether to use weighted averaging FRL. Pass "" to turn false!')
     add_tr.add_argument("--fed_weight_window", type=int, help="how many cumulative episodes to average for calculating the weights.")
     add_tr.add_argument("--fed_agg_method", type=str, choices=["gradients", "weights"], help="which method to use for federated aggregation")
-
+    add_tr.add_argument("--intra_directional_averaging", type=bool, default=False, help="whether to average the leaders parameters during intrafrl")
+    
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
     add_esim.add_argument("exp_path", type=str, help="path to experiment directory")
     add_esim.add_argument("--sim_debug", type=bool, default=False, help="whether to launch the simulator step by step or not.")

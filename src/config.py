@@ -34,7 +34,7 @@ class Config():
         self.report_dir = "reports"
         self.param_path = self.param_path
         self.aggregation_method = self.gradients
-
+        self.intra_directional_averaging=False
         """Environment"""
         self.num_platoons = 1 # the number of platoons for training and simulation
         self.pl_size = 2 # the number of following vehicles in the platoon.
@@ -106,7 +106,6 @@ class Config():
         self.batch_size=64
         self.buffer_size=100000
         self.show_env=False
-
         """Models"""
         self.actor_layer1_size=256
         self.actor_layer2_size=128
