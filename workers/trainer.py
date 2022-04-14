@@ -16,7 +16,7 @@ import logging
 log = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self, base_dir, timestamp, debug_enabled, conf) -> None:
+    def __init__(self, base_dir: str, timestamp: str, debug_enabled: bool, conf: config.Config) -> None:
         self.base_dir = base_dir
         self.timestamp = timestamp
         self.debug_enabled = debug_enabled
@@ -53,6 +53,8 @@ class Trainer:
 
         self.fed_weights = []
         self.fed_weight_sums = []
+        self.all_fed_weights = []
+        self.all_fed_weight_sums = []
 
         self.all_episodic_reward_counters = []
 
@@ -93,7 +95,8 @@ class Trainer:
             rbuffers = []
 
             rbuffers_filled = []
-            
+            fed_weight_lists = []
+            fed_weight_sum_lists = []
             for i in range(self.num_models):
                 ou_objects.append(noise.OUActionNoise(mean=np.zeros(1), config=self.conf))
                 actor = model.get_actor(env.num_states, env.num_actions, self.high_bound, seed_int=self.conf.random_seed, 
@@ -147,7 +150,9 @@ class Trainer:
                 
 
                 rbuffers_filled.append(False)
-            
+                fed_weight_lists.append([])
+                fed_weight_sum_lists.append([]) 
+
             self.all_ou_objects.append(ou_objects)
             self.all_actors.append(actors)
             self.all_critics.append(critics)
@@ -160,7 +165,10 @@ class Trainer:
             self.all_rbuffers.append(rbuffers)
 
             self.all_rbuffers_filled.append(rbuffers_filled)
-        
+            # note these are initialized normally, despite being frl specific. We want to store the data in a standard way for plotting
+            # later.
+            self.all_fed_weights.append(fed_weight_lists)
+            self.all_fed_weight_sums.append(fed_weight_sum_lists)
         self.initialize_lists_for_federation()
 
         assert len(set(self.all_num_actions)) == 1 # make sure the action and state spaces are identical across the platoons
@@ -195,6 +203,7 @@ class Trainer:
             critic_grad_list = []
             critic_weight_list = []
 
+
             weight_factors = []
             for _ in range(range2):
                 actor_grad_list.append([])
@@ -203,12 +212,14 @@ class Trainer:
                 critic_weight_list.append([])
                 weight_factors.append(0)
 
+
             self.all_actor_grad_list.append(actor_grad_list)
             self.all_actor_weight_list.append(actor_weight_list)
             self.all_critic_grad_list.append(critic_grad_list)
             self.all_critic_weight_list.append(critic_weight_list)
             self.fed_weights.append(weight_factors)
 
+            
     def run(self):
         """
         Run the trainer.
@@ -262,6 +273,7 @@ class Trainer:
             self.update_reward_list(ep)
 
         self.close_renderings()
+        self.generate_csvs()
         self.run_simulations()
         
         self.conf.pl_rew_for_simulation = np.average(self.conf.pl_rews_for_simulations)
@@ -292,7 +304,6 @@ class Trainer:
     def train_all_models(self, all_rewards, all_states, all_prev_states, training_episode, training_step):
         """Main method responsible for advancing the environment one timestep, aggregating parameters for FRL,
         and lastly performing local training steps
-        TODO: Finish this comment
         Args:
             all_rewards (): [description]
             all_states ([type]): [description]
@@ -316,11 +327,19 @@ class Trainer:
                     actor_weights = self.all_actors[p][m].weights
                     critic_weights = self.all_critics[p][m].weights
                     # append gradients for avg'ing if federated enabled
+                    # compute weighted averaging factor
+                    if is_weighted_fed_enabled(self.conf, training_episode):
+                        frl_weighting_factor = abs(self.get_weight(p, m)) # calculate the metric for weighting.
+                    else:
+                        if self.debug_enabled:
+                            log.info(f"Waiting before applying weighted FRL, since averaging window is set to {self.conf.weighted_window} and thus episode must be >= {self.conf.weighted_window} prior to applying weighted averaging!")
+                        frl_weighting_factor = None
+
                     if self.conf.fed_method == self.conf.interfrl:
-                        self.aggregate_params(m, p, training_episode, actor_grad, critic_grad, actor_weights, critic_weights)
+                        self.aggregate_params(m, p, frl_weighting_factor, training_episode, actor_grad, critic_grad, actor_weights, critic_weights)
 
                     elif self.conf.fed_method == self.conf.intrafrl:
-                        self.aggregate_params(p, m, training_episode, actor_grad, critic_grad, actor_weights, critic_weights)
+                        self.aggregate_params(p, m, frl_weighting_factor, training_episode, actor_grad, critic_grad, actor_weights, critic_weights)
 
                     # local updates should only occur when global updates do not occur
                     if not is_fed_enabled(self.conf) or not is_valid_update_step(self.conf, training_step):
@@ -339,7 +358,7 @@ class Trainer:
         if is_weighted_fed_enabled(self.conf, training_episode):
             self.fed_weight_sums = tf.reduce_sum(self.fed_weights, axis=1)
     
-    def aggregate_params(self, idx1: int, idx2: int, training_episode: str, actor_grad, critic_grad, actor_weights, critic_weights) -> None:
+    def aggregate_params(self, idx1: int, idx2: int, frl_weighting_factor, training_episode: str, actor_grad, critic_grad, actor_weights, critic_weights) -> None:
         """Aggregate the parameters using the appropriate federation method.
 
         Args:
@@ -350,14 +369,12 @@ class Trainer:
             critic_grad (list): the gradients of the critic
         """
         if is_weighted_fed_enabled(self.conf, training_episode):
-            avg_cumulative_reward = self.get_weight(idx1, idx2) # calculate the metric for weighting
-            self.all_actor_grad_list[idx1][idx2] = self.compute_weighted_params(actor_grad, avg_cumulative_reward) # get weighted actor params
-            self.all_actor_weight_list[idx1][idx2] = self.compute_weighted_params(actor_weights, avg_cumulative_reward)
+            self.all_actor_grad_list[idx1][idx2] = self.compute_weighted_params(actor_grad, frl_weighting_factor) # get weighted actor params
+            self.all_actor_weight_list[idx1][idx2] = self.compute_weighted_params(actor_weights, frl_weighting_factor)
             
-            self.all_critic_grad_list[idx1][idx2] = self.compute_weighted_params(critic_grad, avg_cumulative_reward) # get weighted critic params
-            self.all_critic_weight_list[idx1][idx2] = self.compute_weighted_params(critic_weights, avg_cumulative_reward)
-
-            self.fed_weights[idx1][idx2] = avg_cumulative_reward
+            self.all_critic_grad_list[idx1][idx2] = self.compute_weighted_params(critic_grad, frl_weighting_factor) # get weighted critic params
+            self.all_critic_weight_list[idx1][idx2] = self.compute_weighted_params(critic_weights, frl_weighting_factor)
+            self.fed_weights[idx1][idx2] = frl_weighting_factor
         else:
             self.all_actor_grad_list[idx1][idx2] = actor_grad
             self.all_actor_weight_list[idx1][idx2] = actor_weights
@@ -417,9 +434,9 @@ class Trainer:
         # apply FL aggregation method, and reapply gradients to models
         if self.are_all_rbuffers_filled():
             if self.debug_enabled:
-                log.info(f"Applying {self.conf.fed_method} using {self.conf.aggregation_method} at step {training_step}")
+                log.info(f"Applying {self.conf.fed_method} using {self.conf.aggregation_method} at step {training_step}!")
                 if is_weighted_fed_enabled(self.conf, training_episode):
-                    log.info(f"using weighted sums {[self.fed_weight_sums]}") 
+                    log.info(f"Using weights {self.fed_weights} and weighted sums {self.fed_weight_sums}") 
             
             if is_weighted_fed_enabled(self.conf, training_episode):
                 actor_avg_weights = self.fed_server.get_weighted_avg_params(self.all_actor_weight_list, self.fed_weight_sums)[0]
@@ -495,10 +512,22 @@ class Trainer:
         for p in range(self.num_platoons):
             for m in range(self.num_models):
                 self.all_ep_reward_lists[p][m].append(self.all_episodic_reward_counters[p][m])
-
                 avg_reward = np.mean(self.all_ep_reward_lists[p][m][-self.conf.reward_averaging_window:])
-                log.info("Platoon {} Model {} : Episode * {} of {} * Avg Reward is ==> {}".format(p+1, m+1, ep, self.conf.number_of_episodes, avg_reward))
                 self.all_avg_reward_lists[p][m].append(avg_reward)
+                log.info(f"Platoon {p+1} Model {m+1} : Episode * {ep} of {self.conf.number_of_episodes} * Avg Reward over {self.conf.reward_averaging_window} eps is ==> {avg_reward}, Cum. Episodic Reward is ==> {self.all_ep_reward_lists[p][m][-1]}")
+                if is_weighted_fed_enabled(self.conf, ep):
+                    # recall that I store vars in memory along different axes of the list in inter or intra frl. I need to access the right values for printing
+                    if self.conf.fed_method == self.conf.interfrl:
+                        self.all_fed_weights[p][m].append(self.fed_weights[m][p]) # we store using idx p,m as we want to standardize storage for plotting
+                        self.all_fed_weight_sums[p][m].append(self.fed_weight_sums[m].numpy())
+                        log.info(f"\t .. federated weighting: {self.fed_weights[m][p]}, weight sum: {self.fed_weight_sums[m]}, weighted pct (weighting/weight_sum).: {self.fed_weights[m][p]/self.fed_weight_sums[m]}")
+                    elif self.conf.fed_method == self.conf.intrafrl:
+                        self.all_fed_weights[p][m].append(self.fed_weights[p][m])
+                        self.all_fed_weight_sums[p][m].append(self.fed_weight_sums[p].numpy())
+                        log.info(f"\t .. federated weighting: {self.fed_weights[p][m]}, weight sum: {self.fed_weight_sums[p]}, weighted pct (weighting/weight_sum).: {self.fed_weights[p][m]/self.fed_weight_sums[p]}")
+                    else:
+                        raise ValueError(f"Invalid configured method {self.conf.method} for applying FRL!")
+
         print("")
     
     def close_renderings(self):
@@ -506,8 +535,6 @@ class Trainer:
             env.close_render()
             
     def run_simulations(self):
-        full_avg_rew_df = None
-        full_rew_df = None
         for p in range(self.num_platoons):
             plt.figure()
             for m in range(self.num_models):
@@ -519,7 +546,14 @@ class Trainer:
             plt.legend()
             plt.tight_layout()
             plt.savefig(os.path.join(self.base_dir, self.conf.fig_path % (p+1)))
+            self.conf.pl_rews_for_simulations.append(evaluator.run(conf=self.conf, actors=self.all_actors[p], path_timestamp=self.base_dir, out='save', pl_idx=p+1) / self.conf.re_scalar)
 
+    def generate_csvs(self):
+        """Responsible for generating csv files from data stores in the class.
+        """
+        full_avg_rew_df = None
+        full_rew_df = None
+        for p in range(self.num_platoons):
             # Generate the dataframes for rewards
             avg_rew_df, rew_df = self.generate_reward_data(p, self.all_avg_reward_lists[p], self.all_ep_reward_lists[p])
             if (full_avg_rew_df is None and full_rew_df is None):
@@ -529,11 +563,20 @@ class Trainer:
                 full_avg_rew_df = full_avg_rew_df.append(avg_rew_df)
                 full_rew_df = full_rew_df.append(rew_df)
 
-            self.conf.pl_rews_for_simulations.append(evaluator.run(conf=self.conf, actors=self.all_actors[p], path_timestamp=self.base_dir, out='save', pl_idx=p+1) / self.conf.re_scalar)
-        
         full_avg_rew_df.to_csv(os.path.join(self.base_dir, self.conf.avg_ep_reward_path % (self.conf.random_seed)))
         full_rew_df.to_csv(os.path.join(self.base_dir, self.conf.ep_reward_path % (self.conf.random_seed)))
 
+        if self.conf.weighted_average_enabled:
+            full_weights_df = None
+            for p in range(self.num_platoons):
+                # Generate the dataframes for frl weighting factors
+                weights_df = self.generate_frl_weight_data(p)
+                if (full_weights_df is None):
+                    full_weights_df = weights_df
+                else:
+                    full_weights_df = full_weights_df.append(weights_df)
+            full_weights_df.to_csv(os.path.join(self.base_dir, self.conf.frl_weighted_avg_parameters_path % (self.conf.random_seed)))
+    
     def save_training_results(self, p, m, actor, critic, target_actor, target_critic, avg_ep_reward_list):
         tag = (p+1, m+1)
         
@@ -553,20 +596,36 @@ class Trainer:
 
     def generate_reward_data(self, pl_idx, pl_avg_ep_reward_list, pl_ep_reward_list):
         tag = (pl_idx+1)
-        column_labels = [env.EPISODIC_REWARD_VEHICLE_COL_TEMPL % (m+1) for m in range(self.num_models)]
+        column_labels = [env.VEHICLE_COL % (m+1) for m in range(self.num_models)]
 
         stacked_pl_avg_ep_reward = np.stack(np.array(pl_avg_ep_reward_list, dtype=object), axis=1)
         stacked_pl_ep_reward = np.stack(np.array(pl_ep_reward_list, dtype=object), axis=1)
         avg_ep_df = pd.DataFrame(data=stacked_pl_avg_ep_reward, columns=column_labels)
-        avg_ep_df[env.EPISODIC_REWARD_SEED_COL] = self.conf.random_seed
-        avg_ep_df[env.EPISODIC_REWARD_PLATOON_COL] = tag
+        avg_ep_df[env.SEED_COL] = self.conf.random_seed
+        avg_ep_df[env.PLATOON_COL] = tag
         avg_ep_df[env.EPISODIC_REWARD_AVGWINDOW_COL] = self.conf.reward_averaging_window
         ep_df = pd.DataFrame(data=stacked_pl_ep_reward, columns=column_labels)
-        ep_df[env.EPISODIC_REWARD_SEED_COL] = self.conf.random_seed
-        ep_df[env.EPISODIC_REWARD_PLATOON_COL] = tag
+        ep_df[env.SEED_COL] = self.conf.random_seed
+        ep_df[env.PLATOON_COL] = tag
         return avg_ep_df, ep_df
-
-
+    
+    def generate_frl_weight_data(self, idx):
+        tag = (idx + 1)
+        stacked_pl_fed_weights = np.stack(np.array(self.all_fed_weights[idx], dtype=object), axis=1)
+        vehicle_cols = [env.VEHICLE_COL % (m+1) for m in range(self.num_models)]
+        df = pd.DataFrame(data=stacked_pl_fed_weights, columns=vehicle_cols)
+        df[env.SEED_COL] = self.conf.random_seed
+        df[env.PLATOON_COL] = tag 
+        stacked_pl_weight_sums = np.stack(np.array(self.all_fed_weight_sums[idx], dtype=object), axis=1)
+        fed_weight_sum_cols = [env.FED_WEIGHT_SUM_COL % (m+1) for m in range(self.num_models)]
+        df2 = pd.DataFrame(data=stacked_pl_weight_sums, columns=fed_weight_sum_cols)
+        df = df.join(df2[fed_weight_sum_cols])
+        # compute the percents as well for human readability.
+        for i in range(self.num_models):
+            df[env.FED_WEIGHT_PCT_COL % (i+1)] = df[vehicle_cols[i]] / df[fed_weight_sum_cols[i]]
+        # account for the episodes missed using while waiting for weighted window
+        df.index += self.conf.weighted_window
+        return df
 
 def is_fed_enabled(conf: config.Config) -> bool:
     return (conf.fed_method == conf.interfrl or conf.fed_method == conf.intrafrl) and (conf.framework == conf.dcntrl)

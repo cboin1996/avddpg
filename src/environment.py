@@ -6,7 +6,7 @@ import logging
 log = logging.getLogger(__name__)
 
 class Platoon:
-    def __init__(self, length, config, pl_idx, rand_states=True, evaluator_states_enabled=False):
+    def __init__(self, length, config: config.Config, pl_idx, rand_states=True, evaluator_states_enabled=False):
         """Initialize the platoon
 
         Args:

@@ -133,8 +133,13 @@ def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index
                 fig_dest = os.path.join(report_exp_dir, fig_name)
                 fig_relative_path = dir_name + "/" + fig_name
                 shutil.copy(fig_src, fig_dest)
-                f.write(get_figure_str(fig_map['width'], fig_relative_path, f"fig:{fig_relative_path}", fig_map["caption"] % (latexify_dir_name)))
-            
+                if '.png' in fig_name:
+                    f.write(get_figure_str(fig_map['width'], fig_relative_path, f"fig:{fig_relative_path}", fig_map["caption"] % (latexify_dir_name)))
+                elif '.svg' in fig_name:
+                    f.write(get_svg_str(fig_map['width'], fig_relative_path, f"fig:{fig_relative_path}", fig_map["caption"] % (latexify_dir_name)))
+                else:
+                    raise ValueError(f"Cannot load image. Consider converting image {fig_src} to one of '.png' or '.svg' and try running again.")
+
             conf_fpath = os.path.join(dir_, conf_fname)
             conf_dct = util.load_json(conf_fpath)
             conf_dct = util.remove_keys_from_dict(conf_dct, conf_drop_cols)

@@ -78,7 +78,7 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--fed_weight_enabled", type=bool, default=False, help='whether to use weighted averaging FRL. Pass "" to turn false!')
     add_tr.add_argument("--fed_weight_window", type=int, help="how many cumulative episodes to average for calculating the weights.")
     add_tr.add_argument("--fed_agg_method", type=str, choices=["gradients", "weights"], help="which method to use for federated aggregation")
-    add_tr.add_argument("--intra_directional_averaging", type=bool, default=False, help="whether to average the leaders parameters during intrafrl")
+    add_tr.add_argument("--intra_directional_averaging", type=bool, default=True, help="whether to average the leaders parameters during intrafrl. default: true")
     
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
     add_esim.add_argument("exp_path", type=str, help="path to experiment directory")

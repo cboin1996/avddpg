@@ -116,24 +116,24 @@ class Config():
         """Directories"""
         self.img_tag = "%s_%s"
         self.actor_fname = f'actor{self.img_tag}.h5'
-        self.actor_picname = f'actor{self.img_tag}.png'
+        self.actor_picname = f'actor{self.img_tag}.svg'
         self.actor_weights = f'actor_weights{self.img_tag}.h5'
         self.critic_fname = f'critic{self.img_tag}.h5'
-        self.critic_picname = f'critic{self.img_tag}.png'
+        self.critic_picname = f'critic{self.img_tag}.svg'
         self.critic_weights = f'critic_weights{self.img_tag}.h5'
         self.t_actor_fname = f'target_actor{self.img_tag}.h5'
-        self.t_actor_picname = f'target_actor{self.img_tag}.png'
+        self.t_actor_picname = f'target_actor{self.img_tag}.svg'
         self.t_actor_weights = f'target_actor_weights{self.img_tag}.h5'
         self.t_critic_fname = f'target_critic{self.img_tag}.h5'
-        self.t_critic_picname = f'target_critic{self.img_tag}.png'
+        self.t_critic_picname = f'target_critic{self.img_tag}.svg'
         self.t_critic_weights = f'target_critic_weights{self.img_tag}.h5'
 
         self.pl_tag = "_p%s"
         self.seed_tag = "_seed%s"
-        self.fig_path = f"reward_curve{self.pl_tag}.png"
+        self.fig_path = f"reward_curve{self.pl_tag}.svg"
         self.avg_ep_reward_path = f"avg_ep_reward_{self.seed_tag}.csv"
         self.ep_reward_path = f"ep_reward_{self.seed_tag}.csv"
-
+        self.frl_weighted_avg_parameters_path = f"frl_weightings_{self.seed_tag}.csv"
         self.zerofig_name = "zero"
         self.guasfig_name = "guassian"
         self.stepfig_name = "step"

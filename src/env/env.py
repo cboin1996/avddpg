@@ -1,8 +1,11 @@
 """Environment variables for avddpg.
 """
 
-EPISODIC_REWARD_PLATOON_COL = "platoon"
-EPISODIC_REWARD_SEED_COL = "seed"
+# DF columns for storing data
+PLATOON_COL = "platoon"
+SEED_COL = "seed"
 EPISODIC_REWARD_AVGWINDOW_COL = "avg window"
-EPISODIC_REWARD_VEHICLE_COL_TEMPL = "Vehicle %s"
-EPISODIC_REWARD_COLNAME = "Episode"
+VEHICLE_COL = "Vehicle %s"
+TRAINING_EPISODE_COLNAME = "Episode"
+FED_WEIGHT_SUM_COL = "Vehicle %s fws" # fed weight sum column
+FED_WEIGHT_PCT_COL = "Vehicle %s pct" # fed weight pct column
