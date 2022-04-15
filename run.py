@@ -72,7 +72,7 @@ def run(args):
                             manual_timestep_override=args.n_timesteps) # already seeded above
     elif args.mode == "accumr":
         setup_global_logging_stream(conf)
-        accumulator.generate_reward_plot(n_vehicles=args.acc_nv, timestamp=timestamp)
+        accumulator.generate_reward_plot(n_vehicles=args.acc_nv, timestamp=timestamp, mode_limit=args.mode_limit)
 
 
     elif args.mode == 'lsim':

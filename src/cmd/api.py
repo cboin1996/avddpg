@@ -1,4 +1,5 @@
 import argparse
+from secrets import choice
 from src import config
 
 def set_args_to_config(args, config: config.Config):
@@ -85,11 +86,13 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_esim.add_argument("--sim_render", type=bool, help="Whether to output the environment states to console.")
     add_esim.add_argument("--title_off", type=bool, default=False, help="Whether to include a title in the plot.")
     add_esim.add_argument("--n_timesteps", type=int, default=100, help=
-                          "specify a number of timesteps to plot the simulation for. This setting used in the manual override pass of the evaluator, with a default value of 0.")
+                          "specify a number of timesteps to plot the simulation for. This setting used in the manual override pass of the evaluator, with a default value of 100.")
 
     add_accumr = subparsers.add_parser('accumr', help="run in accumulator mode for reward plotting.")
     add_accumr.add_argument("--acc_debug", type=bool, default=False, help="whether to launch the reward accumulator step by step or not.")
     add_accumr.add_argument("--acc_nv", type=int, default=1, help="Number of vehicles in the episodic reward table (should be >0).")
+    add_accumr.add_argument("--mode_limit", type=int, default=3, choices=[0,1,2,3], help=
+        "Number of modes for plotting. If specified, you can limit the range of modes. 0 = ep reward, 1 = avg ep reward, 2 = fed weightings, 3 = fed weighting pct")
 
     add_accums = subparsers.add_parser('accums', help="run in accumulator mode for simulation plotting.")
     add_accums.add_argument("--sim_render", type=bool, help="Whether to output the environment states to console.")

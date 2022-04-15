@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 AGG_FNAME = "aggregation.csv"
 AVERAGED_DF = "averaged.csv"
 
-def generate_reward_plot(n_vehicles: int, timestamp: int) -> bool:
+def generate_reward_plot(n_vehicles: int, timestamp: int, mode_limit: int) -> bool:
     """Accumulates and plots across multiple seeds, averaging the reward value
     across the seed and plotting with a shaded error bar.
 
@@ -25,7 +25,7 @@ def generate_reward_plot(n_vehicles: int, timestamp: int) -> bool:
     accum_path = os.path.join(sys.path[0], config.Config.report_dir, f"ACCUM_{timestamp}")
     os.mkdir(accum_path)
     # iterate modes 0,1..3
-    for i in range (4):
+    for i in range (mode_limit+1):
         df = get_data(i, accum_path)
         df = transform(df, n_vehicles,i, accum_path)
         plot(df, n_vehicles, i, accum_path)
@@ -50,6 +50,8 @@ def get_data(mode: int, accum_path: str) -> pd.DataFrame:
         elif mode == 1:
             data_path = conf.avg_ep_reward_path % (conf.random_seed)
         elif mode == 2 or mode == 3:
+            if not hasattr(conf, "frl_weighted_avg_parameters_path"):
+                raise ValueError(f"Mode {mode} is invalid as attribute frl_weighted_avg_parameters_path does not exist in config!")
             data_path = conf.frl_weighted_avg_parameters_path % (conf.random_seed)
 
         if df is None:
