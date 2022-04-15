@@ -41,12 +41,11 @@ def set_args_to_config(args, config: config.Config):
 
     if hasattr(args, "fed_weight_enabled") and args.fed_weight_enabled is not None:
         config.weighted_average_enabled = args.fed_weight_enabled
-    
+
     if hasattr(args, "fed_weight_window") and args.fed_weight_window is not None:
         config.weighted_window = args.fed_weight_window
     if hasattr(args, "fed_agg_method") and args.fed_agg_method is not None:
         config.aggregation_method = args.fed_agg_method
-    
     return config
 def get_cmdl_args(args: list, description: str, config: config.Config):
     """Simple command line parser
@@ -58,7 +57,7 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     parser = argparse.ArgumentParser(description=description)
     subparsers = parser.add_subparsers(dest="mode")
     add_tr = subparsers.add_parser('tr', help="run in training mode")
-    add_tr.add_argument("--seed", type=int, default=config.random_seed, 
+    add_tr.add_argument("--seed", type=int, default=config.random_seed,
         help="the seed globally set across the experiment. If not set, will take whatever is in src/config.py")
     add_tr.add_argument("--method", choices=[config.exact, config.euler], help="Discretization method.")
     add_tr.add_argument("--rand_states", type=bool, help='whether to initialize the vehicle environments with random states or what is in config.py. Pass "" to turn false!')
@@ -71,20 +70,22 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_tr.add_argument("--actor_lr", type=float, help="The learning rate of the actor!")
     add_tr.add_argument("--critic_lr", type=float, help="The learning rate of the critic!")
 
-    add_tr.add_argument("--fed_method", choices=[config.interfrl, config.intrafrl, config.normal])    
+    add_tr.add_argument("--fed_method", choices=[config.interfrl, config.intrafrl, config.normal])
     add_tr.add_argument("--fed_update_count", type=int, help="number of episodes between federated averaging updates")
     add_tr.add_argument("--fed_cutoff_ratio", type=float, help="the ratio to toral number of episodes at which FRL is cutoff")
     add_tr.add_argument("--fed_update_delay", type=float, help="the time in second between updates during a training episode for FRL.")
     add_tr.add_argument("--fed_weight_enabled", type=bool, default=False, help='whether to use weighted averaging FRL. Pass "" to turn false!')
     add_tr.add_argument("--fed_weight_window", type=int, help="how many cumulative episodes to average for calculating the weights.")
     add_tr.add_argument("--fed_agg_method", type=str, choices=["gradients", "weights"], help="which method to use for federated aggregation")
-    add_tr.add_argument("--intra_directional_averaging", type=bool, default=False, help="whether to average the leaders parameters during intrafrl")
-    
+    add_tr.add_argument("--intra_directional_averaging", type=bool, default=True, help="whether to average the leaders parameters during intrafrl. default: true")
+
     add_esim = subparsers.add_parser('esim', help="run in evaluation/simulator mode. ")
     add_esim.add_argument("exp_path", type=str, help="path to experiment directory")
     add_esim.add_argument("--sim_debug", type=bool, default=False, help="whether to launch the simulator step by step or not.")
     add_esim.add_argument("--sim_render", type=bool, help="Whether to output the environment states to console.")
     add_esim.add_argument("--title_off", type=bool, default=False, help="Whether to include a title in the plot.")
+    add_esim.add_argument("--n_timesteps", type=int, default=100, help=
+                          "specify a number of timesteps to plot the simulation for. This setting used in the manual override pass of the evaluator, with a default value of 0.")
 
     add_accumr = subparsers.add_parser('accumr', help="run in accumulator mode for reward plotting.")
     add_accumr.add_argument("--acc_debug", type=bool, default=False, help="whether to launch the reward accumulator step by step or not.")

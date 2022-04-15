@@ -1,21 +1,55 @@
 # Autonomous Vehicle Reinforcement Learning using DDPG Algorithm v1.0.0
+A CLI tool for running DRL experiments on a simulated Autonomous vehicle platoon (or many).
 
-v0.1 - Working model for model A and model B
+## Install
+To install, create a venv and install the requirements file.
+This program is loosely tested on Python 3.6, 3.7 and 3.8
+```
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-v0.2 - Working on model A and model B to the same environment format, where the ddpg actor critic will observe only states 1-3 for model A versus 1-4 for model B
+***Note that on windows you will perform ```venv/Scripts/Activate``` instead of ```source venv/bin/activate```.
 
-v0.3 - Multi vehicle centralized and decentralized approach
+## Run the program
+To see what the cli can do, enter the following.
+```
+python run.py --help
+```
 
-v0.4 - Multi vehicle and multi platoon support w/ inter/intra FRL
+### Training
+```
+python run.py tr
+```
+To gain insight on configurable parameters, use
+```
+python run.py tr --help
+```
+A training session will create a .outputs folder within the base of the repo.
+This folder will contain an experiment folder containing the results.
 
-v0.5 - Patched reporter for inter/intra FRL experiments, added tunability of critic actor layer
- 
-v0.6 - Implemented debug api, made improvements to command line interface
+### Reporting
+After training, you can generate a latex report in a folder. This can be embedded into an overleaf project as a latex subfile if you like.
+```
+python run.py lmany
+```
+Note that this command only works if the .outputs folder contains an experiment(s).
 
-v0.7 - Latest in development
+### Figure Generation
+If you wish to compare similar experiments, you can use at the [accumulator.py](./workers/accumulator.py) file.
 
-v0.8 - weighted fedAvg using gradients
+```
+python run.py accumr
+```
+This will accumulate experiment results and plot the reward averaged across the seeds in svg files for each platoon.
 
-v0.9 - weighted fedavg with gradients or model weights
+### Re-run simulations
+You can re-run simulations on existing experiments, by running the below command and passing the file as an argument
+```
+python run.py esim
+```
 
-v1.0.0 - 
+## Notes
+You can nest --help on any of the above commands if you cant figure out what to do with the cli.
+

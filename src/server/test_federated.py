@@ -88,11 +88,12 @@ if __name__=="__main__":
 
         fed_weight_sums = tf.reduce_sum(fed_weights, axis=1)
         input_str = ""
-        input_str += f"\n--FEDERATED TEST INPUTS--\n\tgrad_list: {grads_list}, shape: {np.shape(grads_list)}"
-        input_str += f"\n\n\tfed_proc_grads: {fed_proc_grads}, shape: {np.shape(fed_proc_grads)}"
-        input_str += f"\n\n\tweights: {weights}, shape: {np.shape(weights)}"
-        input_str += f"\n\n\tfed_weights_sum: {fed_weight_sums}, shape: {np.shape(fed_weight_sums)}"
+        input_str += f"\n--FEDERATED TEST INPUTS--\n\t --> grad_list: {grads_list}, shape: {np.shape(grads_list)}"
+        input_str += f"\n\n\t --> fed_proc_grads: {fed_proc_grads}, shape: {np.shape(fed_proc_grads)}"
+        input_str += f"\n\n\t --> weights: {weights}, shape: {np.shape(weights)}"
+        input_str += f"\n\n\t --> fed_weights_sum: {fed_weight_sums}, shape: {np.shape(fed_weight_sums)}"
         print(input_str)
-        fed_avg = server.get_weighted_avg_grads(fed_proc_grads, fed_weight_sums)
-        logger.info(f"Input gradients: {fed_proc_grads}")
-        logger.info(f"Output gradients: {fed_avg}")
+        fed_avg = server.get_weighted_avg_params(fed_proc_grads, fed_weight_sums)
+        logger.info(f"--> Input gradients: {fed_proc_grads}")
+        logger.info(f"--> Output gradients: {fed_avg}")
+        logger.info(f"--> fed_weights: {fed_weights}")

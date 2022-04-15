@@ -22,7 +22,7 @@ def aggregate_json_to_df(output_root, list_of_exp_paths, conf_fname, report_time
             aggregate_df = pd.DataFrame([conf_dct])
         else:
             aggregate_df = aggregate_df.append(pd.DataFrame([conf_dct]))
-    
+
     if index_col is not None:
         aggregate_df = aggregate_df.set_index(index_col)
     util.write_csv_from_df(aggregate_df, os.path.join(report_dir, report_timestamp + ".csv"))
@@ -70,8 +70,11 @@ def generate_fig_params(experiment_dir, conf_fname):
                 )
         fig_params.append({"name" : f"res_guassian{conf.pl_tag}.svg" % (p+1),
                 "width" : 0.4,
-                "caption" : f"Platoon {p+1} simulation for experiment %s"})
-    
+                "caption" : f"Platoon {p+1} simulation for experiment %s including state space variables."})
+        fig_params.append({"name" : f"rew_guassian{conf.pl_tag}.svg" % (p+1),
+                "width" : 0.4,
+                "caption" : f"Platoon {p+1} simulation for experiment %s including reward equation variables."})
+
     return fig_params
 
 def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index_col, conf_drop_cols, report_timestamp, fig_width, param_dct):
@@ -133,8 +136,13 @@ def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index
                 fig_dest = os.path.join(report_exp_dir, fig_name)
                 fig_relative_path = dir_name + "/" + fig_name
                 shutil.copy(fig_src, fig_dest)
-                f.write(get_figure_str(fig_map['width'], fig_relative_path, f"fig:{fig_relative_path}", fig_map["caption"] % (latexify_dir_name)))
-            
+                if '.png' in fig_name:
+                    f.write(get_figure_str(fig_map['width'], fig_relative_path, f"fig:{fig_relative_path}", fig_map["caption"] % (latexify_dir_name)))
+                elif '.svg' in fig_name:
+                    f.write(get_svg_str(fig_map['width'], fig_relative_path, f"fig:{fig_relative_path}", fig_map["caption"] % (latexify_dir_name)))
+                else:
+                    raise ValueError(f"Cannot load image. Consider converting image {fig_src} to one of '.png' or '.svg' and try running again.")
+
             conf_fpath = os.path.join(dir_, conf_fname)
             conf_dct = util.load_json(conf_fpath)
             conf_dct = util.remove_keys_from_dict(conf_dct, conf_drop_cols)
@@ -143,10 +151,9 @@ def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index
             f.write(conf_df.to_latex(caption=f"Hyperparameter's for Experiment {latexify_dir_name}", label=f"tab:hyp_exp{dir_name}"))
 
 
-        
 
-            
 
-                
 
-    
+
+
+
