@@ -18,7 +18,7 @@ class Platoon:
         self.pl_idx = pl_idx
         log.info(f"=== INITIALIZING PLATOON {self.pl_idx} ===")
         self.config = config
-        
+
         self.length = length
         self.followers = []
         self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a, config=self.config)
@@ -27,6 +27,7 @@ class Platoon:
         self.evaluator_states_enabled = evaluator_states_enabled
 
         self.state_lbs = {0: "$e_{pi}$", 1 : "$e_{vi}$", 2 : "$a_i$", 3 : "$a_{i-1}$"}
+        self.jerk_lb = "jerk"
         self.exog_lbl = '$u_i$'
         self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
         self.pl_leader_tau = self.config.pl_leader_tau
@@ -49,7 +50,8 @@ class Platoon:
         else:
             self.def_num_states = 4
             self.num_states = self.def_num_states * self.multiplier
-        
+
+        self.number_of_reward_components = Vehicle.number_of_reward_components
         for i in range(0, length):
             if i == 0:
                 self.followers.append(Vehicle(i, self.config, self.pl_leader_tau, self.front_accel,
@@ -57,7 +59,7 @@ class Platoon:
                                                 num_actions=self.num_actions, rand_states=self.rand_states, evaluator_states_enabled=self.evaluator_states_enabled))
             else:
                 self.followers.append(Vehicle(i, self.config, self.followers[i-1].tau, self.followers[i-1].x[2],
-                                                num_states=self.num_states, num_actions=self.num_actions, rand_states=self.rand_states, 
+                                                num_states=self.num_states, num_actions=self.num_actions, rand_states=self.rand_states,
                                                 evaluator_states_enabled=self.evaluator_states_enabled)) # chain tau and accel in state
 
         # Rendering attr
@@ -76,10 +78,10 @@ class Platoon:
                        [0,255,0], # green
                        [0,0,255], # blue
                        [255,255,0], # yellow
-                       [255,0,255], # magenta 
+                       [255,0,255], # magenta
                        [0,255,255] # cyan
                        ]
-        
+
         if self.length > len(self.colors):
             raise ValueError(f"Platoon of length {self.length}, but only have {len(self.colors)}! Add more colors in environment to work with larger platoons in rendering!")
 
@@ -198,13 +200,13 @@ class Platoon:
             (desired_headway - self.min_position) * self.scale, self.floor * self.scale
         )
 
-        return self.viewer.render(return_rgb_array= mode == "rgb_array") 
+        return self.viewer.render(return_rgb_array= mode == "rgb_array")
 
     def close_render(self):
         if self.viewer is not None:
             self.viewer.close()
             self.viewer = None
-        
+
     def step(self, actions, leader_exog=None, debug_mode=False):
         """Advances the environment one step
 
@@ -230,7 +232,7 @@ class Platoon:
             rewards.append(f_reward)
             terminals.append(f_terminal)
 
-        if self.config.framework == self.config.cntrl: 
+        if self.config.framework == self.config.cntrl:
             states = [list(np.concatenate(states).flat)]
             rewards = [self.get_reward(states, rewards)]
 
@@ -238,25 +240,35 @@ class Platoon:
         if platoon_done:
             log.info(f"Platoon [{self.pl_idx}] is terminating as a vehicle reached terminal state!")
         return states, rewards, platoon_done
-    
+
+    def get_jerk(self):
+        """
+        Get the jerk vector of the platoon from vehicle [0.. 1 .. n]
+        """
+        jerks = []
+        for i in range(self.length):
+            jerks.append([self.followers[i].jerk])
+
+        return jerks
+
     def get_exogenous_info(self, idx, leader_exog):
         """
-        Get the 'exogenous' information for the system. For 
+        Get the 'exogenous' information for the system. For
         'Model A' this would be the leading vehicle acceleration. For 'Model B' .. use leader control input 'u'"""
         if self.config.model == self.config.modelB:
-            if idx == 0:                    
+            if idx == 0:
                 exog = self.front_u if leader_exog == None else leader_exog
             else:
                 exog = self.followers[idx-1].u # model B uses the control input, u as exogenous
 
         elif self.config.model == self.config.modelA:
-            if idx == 0:                    
+            if idx == 0:
                 exog = self.front_accel if leader_exog == None else leader_exog
             else:
                 exog = self.followers[idx-1].x[2] # for model A use the accel of the leading vehicle as exogenous
-        
+
         return exog
-    
+
     def get_reward(self, states, rewards):
         """Calculates the platoons reward
 
@@ -273,7 +285,7 @@ class Platoon:
     def reset(self):
         states = []
         self.front_accel = util.get_random_val(self.config.rand_gen, self.config.pl_leader_reset_a, std_dev=self.config.pl_leader_reset_a, config=self.config)
-       
+
         for i in range(len(self.followers)):
             self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
 
@@ -284,7 +296,7 @@ class Platoon:
 
             states.append(follower_st)
 
-        if self.config.framework == self.config.cntrl: 
+        if self.config.framework == self.config.cntrl:
             states = [list(np.concatenate(states).flat)]
 
         return states
@@ -303,23 +315,25 @@ class Vehicle:
                 num_actions (int)      : number of actions in the model
                 a           (float)    : epi stability constant
                 b           (float)    : evi stability constant
-                x           (np.array) : the state of the system (control error ep, 
+                x           (np.array) : the state of the system (control error ep,
                                             control error ev, vehicle acceleration a)
-                A           (np.array) : system matrix  
+                A           (np.array) : system matrix
                 B           (np.array) : system matrix
                 C           (np.array) : system matrix
                 config      (Config)   : configuration class
     """
+    # indicate the number of variables in the reward for plotting
+    number_of_reward_components = 4
     def __init__(self, idx, config: config.Config, tau_lead=None, a_lead = None, num_states = None, num_actions = None, rand_states=True,
         evaluator_states_enabled=True):
-        """constructor - r, h, L and tau referenced from 
+        """constructor - r, h, L and tau referenced from
                          https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7146426/
-                         b,c taken from https://www.merl.com/publications/docs/TR2019-142.pdf     
+                         b,c taken from https://www.merl.com/publications/docs/TR2019-142.pdf
             Arguments:
                 idx (integer) : the vehicle's index in the platoon
                 config (config.Config) : the configuration class
                 tau_lead (float, optional) : the vehicle dynamics coefficent of the leading vehicle in the platoon
-                a_lead (float, optional) : the acceleration of the leading vehicle in the platoon 
+                a_lead (float, optional) : the acceleration of the leading vehicle in the platoon
         """
         log.info(f"=== Inititializing Vehicle {idx}===")
         self.config = config
@@ -357,7 +371,7 @@ class Vehicle:
         self.exog = 0
 
         self.action_high =  self.config.action_high
-        self.action_low  = self.config.action_low 
+        self.action_low  = self.config.action_low
 
         self.num_states = num_states
         self.num_actions = num_actions
@@ -369,7 +383,7 @@ class Vehicle:
         self.velocity = 0
         self.desired_headway = 0
         self.headway = 0
-        self.reset(a_lead) # initializes the states 
+        self.reset(a_lead) # initializes the states
 
         """ Defining the system matrices """
         self.set_system_matrices(self.config.method)
@@ -388,7 +402,7 @@ class Vehicle:
                                 0,
                                 self.T/self.tau,
                                 0])
-            
+
             self.C = np.array( [0,
                                 0,
                                 0,
@@ -401,8 +415,8 @@ class Vehicle:
 
             A_14 =   self.tau_lead * self.T - self.tau_lead ** 2 \
                     + (self.tau_lead ** 2) * e_lead
-            
-            A_23 = - self.tau + self.tau * e 
+
+            A_23 = - self.tau + self.tau * e
 
             A_24 =   self.tau_lead - self.tau_lead * e_lead
 
@@ -410,14 +424,14 @@ class Vehicle:
                                  [0, 1     , A_23,   A_24],
                                  [0, 0     , e   ,   0   ],
                                  [0, 0     , 0   , e_lead]])
-            
+
             B_11 = - self.h * self.T + self.h * self.tau * e \
                     - self.h * self.tau - (self.T ** 2) / 2 + self.tau * self.T \
                     + (self.tau ** 2) * e - self.tau ** 2
-            
-            B_21 = - self.T - self.tau * e + self.tau 
 
-            self.B = np.array([B_11, 
+            B_21 = - self.T - self.tau * e + self.tau
+
+            self.B = np.array([B_11,
                                B_21,
                                -e + 1,
                                0])
@@ -436,14 +450,14 @@ class Vehicle:
         log.info("B Matrix: %s" % (self.B))
         log.info("C Matrix: %s" % (self.C))
         self.print_hyps(output="log")
-        
+
     def render(self, str_form=False):
         output = f"| v[{self.idx}] -- x: {np.round(self.x, 2)}, r: {round(self.reward, 2)}, u: {round(self.u, 2)}, exog: {round(self.exog, 2)}, vel: {round(self.velocity, 2)} -- |"
         if str_form == True:
             return output
         else:
             print(output, end='\r', flush=True)
-    
+
     def step(self, u, exog_info, debug_mode=False):
         """advances the vehicle model by one timestep
 
@@ -455,12 +469,13 @@ class Vehicle:
         self.step_count +=1
         terminal = False
         self.u = u
-        self.exog = exog_info 
+        self.exog = exog_info
 
         norm_ep = abs(self.x[0]) / self.max_ep
         norm_ev = abs(self.x[1]) / self.max_ev
         norm_u  = abs(self.u) / abs(self.action_high)
-        jerk =  abs(self.x[2] - self.prev_x[2]) / (2 * self.max_a)
+        n_jerk = abs(self.x[2] - self.prev_x[2]) / (2 * self.max_a)
+        self.jerk = (self.x[2] - self.prev_x[2]) / (self.T)
 
         if debug_mode:
             print("====__  Vehicle %s __====" % (self.idx))
@@ -479,7 +494,8 @@ class Vehicle:
             print("\tc: ", self.c)
             print("\tu: ", self.u)
             print("\td: ", self.d)
-            print("\tjerk: ", jerk)
+            print("\tn_jerk: ", n_jerk)
+            print("\tjerk: ", self.jerk)
             print("\texog: ", self.exog)
 
         self.cumulative_accel += self.x[2]
@@ -492,7 +508,7 @@ class Vehicle:
             self.reward = self.config.terminal_reward  * self.config.re_scalar
             log.info(f"Vehicle [{self.idx}] : Terminal state detected at (val, allowed) for ep = ({self.x[0]}, {self.config.max_ep}), ev = ({self.x[1]}, {self.config.max_ev}). Returning reward: {self.reward}")
         else:
-            self.reward = (self.a*(norm_ep) + self.b*(norm_ev) + self.c*(norm_u) + self.d*(jerk))  * self.config.re_scalar
+            self.reward = (self.a*(norm_ep) + self.b*(norm_ev) + self.c*(norm_u) + self.d*(n_jerk))  * self.config.re_scalar
 
         self.prev_x = self.x
         self.x = self.A.dot(self.x) + self.B.dot(self.u) + self.C.dot(exog_info) # state update
@@ -501,7 +517,7 @@ class Vehicle:
             print("\tx after evolution: ", self.x)
 
         return self.x[0:self.num_states], -self.reward, terminal # return only the elements that correspond to the state size.
-    
+
     def reset(self, a_lead=None):
         """reset the vehicle environment
 
@@ -514,6 +530,7 @@ class Vehicle:
         self.cumulative_accel = 0
         self.desired_headway = 0
         self.headway = 0
+        self.jerk = 0
 
         if self.evaluator_states_enabled:
             if self.rand_states:
@@ -541,10 +558,10 @@ class Vehicle:
         self.prev_x = self.x
 
         return (self.x[0:self.num_states])
-    
+
     def set_state(self, state):
         self.x = state
-    
+
     def print_hyps(self, output: str):
         """
         Method for printing attributes for the class
@@ -586,7 +603,6 @@ if __name__ == "__main__":
     # print("\npost")
     # print(pl.reset())
 
-    
 
 
-    
+

@@ -56,7 +56,7 @@ class Config():
 
         self.max_ep = 20
         self.max_ev = 20
-        
+
         self.reset_ep_max = 1.5 # max position error upon environment reset
         self.reset_max_ev = 1.5 # max velocity error upon environment reset
         self.reset_max_a = 0.05 # max accel of a vehicle upon reset
@@ -76,7 +76,7 @@ class Config():
         self.random_seed = 1
         self.evaluation_seed = 6
 
-        self.normal = 'normal' 
+        self.normal = 'normal'
         self.uniform = 'uniform'
         self.rand_gen = self.normal # which type of random numbers to use.
         self.rand_states = True # whether or not to use random initial states for each environment reset.
@@ -89,11 +89,11 @@ class Config():
         self.fed_update_delay_steps = int(self.fed_update_delay/self.sample_rate)
 
         self.number_of_episodes = int(self.total_time_steps/self.steps_per_episode)
-        
+
         self.gamma = 0.99 # Discount factor for future rewards
         self.fed_cutoff_episode  = int(self.fed_cutoff_ratio * self.number_of_episodes)
         self.centrl_hidd_mult = 1.2
-        
+
         self.reward_averaging_window = 40
         # Learning rate for actor-critic models
         self.critic_lr = 0.0005
@@ -106,6 +106,9 @@ class Config():
         self.batch_size=64
         self.buffer_size=100000
         self.show_env=False
+        """Evaluator"""
+        self.manual_timestep_override = 100
+
         """Models"""
         self.actor_layer1_size=256
         self.actor_layer2_size=128
@@ -152,7 +155,7 @@ class Config():
         self.timestamp = None
         self.drop_keys_in_report = ["fed_enabled", "weighted_average_enabled", "modelA", "modelB", "dcntrl", "cntrl", "interfrl", "intrafrl", "hfrl", "vfrl", "nofrl", "res_dir", "report_dir", "param_path", "euler",
                                     "exact", "normal", "uniform", "show_env", "actor_fname", "actor_picname", "actor_weights", "critic_fname", "critic_picname",
-                                    "critic_weights", "t_actor_fname", "t_actor_picname", "t_actor_weights", "t_critic_fname", "t_critic_picname", 
+                                    "critic_weights", "t_actor_fname", "t_actor_picname", "t_actor_weights", "t_critic_fname", "t_critic_picname",
                                     "t_critic_weights", "fig_path", "zerofig_name", "guasfig_name", "stepfig_name", "rampfig_name", "dirs",
                                     "log_format", "log_date_fmt", "drop_keys_in_report", "index_col", "param_descs", "img_tag", "pl_rews_for_simulations", "pl_tag"]
 

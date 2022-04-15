@@ -22,7 +22,7 @@ def aggregate_json_to_df(output_root, list_of_exp_paths, conf_fname, report_time
             aggregate_df = pd.DataFrame([conf_dct])
         else:
             aggregate_df = aggregate_df.append(pd.DataFrame([conf_dct]))
-    
+
     if index_col is not None:
         aggregate_df = aggregate_df.set_index(index_col)
     util.write_csv_from_df(aggregate_df, os.path.join(report_dir, report_timestamp + ".csv"))
@@ -70,8 +70,11 @@ def generate_fig_params(experiment_dir, conf_fname):
                 )
         fig_params.append({"name" : f"res_guassian{conf.pl_tag}.svg" % (p+1),
                 "width" : 0.4,
-                "caption" : f"Platoon {p+1} simulation for experiment %s"})
-    
+                "caption" : f"Platoon {p+1} simulation for experiment %s including state space variables."})
+        fig_params.append({"name" : f"rew_guassian{conf.pl_tag}.svg" % (p+1),
+                "width" : 0.4,
+                "caption" : f"Platoon {p+1} simulation for experiment %s including reward equation variables."})
+
     return fig_params
 
 def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index_col, conf_drop_cols, report_timestamp, fig_width, param_dct):
@@ -148,10 +151,9 @@ def generate_latex_report(output_root, list_of_exp_paths, conf_fname, conf_index
             f.write(conf_df.to_latex(caption=f"Hyperparameter's for Experiment {latexify_dir_name}", label=f"tab:hyp_exp{dir_name}"))
 
 
-        
 
-            
 
-                
 
-    
+
+
+
