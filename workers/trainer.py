@@ -392,7 +392,7 @@ class Trainer:
         Returns:
             float: the weight to use for performing weighted averaging
         """
-        return 1/np.mean(abs(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:]))# calculate the metric for weighting
+        return abs(1/np.mean(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:]))# calculate the metric for weighting
 
     def compute_weighted_params(self, params, weight):
         return np.multiply(np.array(params, dtype=object), weight)
