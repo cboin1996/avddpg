@@ -329,7 +329,7 @@ class Trainer:
                     # append gradients for avg'ing if federated enabled
                     # compute weighted averaging factor
                     if is_weighted_fed_enabled(self.conf, training_episode):
-                        frl_weighting_factor = abs(self.get_weight(p, m)) # calculate the metric for weighting.
+                        frl_weighting_factor = self.get_weight(p, m) # calculate the metric for weighting.
                     else:
                         if self.debug_enabled:
                             log.info(f"Waiting before applying weighted FRL, since averaging window is set to {self.conf.weighted_window} and thus episode must be >= {self.conf.weighted_window} prior to applying weighted averaging!")
@@ -392,7 +392,7 @@ class Trainer:
         Returns:
             float: the weight to use for performing weighted averaging
         """
-        return 1/np.mean(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:]) # calculate the metric for weighting
+        return np.mean(self.all_ep_reward_lists[idx1][idx2][-self.conf.weighted_window:])# calculate the metric for weighting
 
     def compute_weighted_params(self, params, weight):
         return np.multiply(np.array(params, dtype=object), weight)
