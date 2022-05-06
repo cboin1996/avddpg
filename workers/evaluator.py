@@ -110,12 +110,12 @@ def run(conf=None, actors=None,
             reward_axs[number_of_reward_components-1].yaxis.set_label_text(env.jerk_lb)
             reward_axs[number_of_reward_components-1].legend()
 
-        simulation_axs[num_rows-1].plot(input_list, label=f"Platoon leader") # overlay platoon leaders transmitted data
+        simulation_axs[num_rows-1].plot(input_list, label=f"Platoon leader", zorder=0) # overlay platoon leaders transmitted data
         simulation_axs[num_rows-1].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
         simulation_axs[num_rows-1].yaxis.set_label_text(env.exog_lbl)
         simulation_axs[num_rows-1].legend()
-
-        reward_axs[number_of_reward_components-2].plot(input_list, label=f"Platoon leader") # overlay platoon leaders transmitted data
+        
+        reward_axs[number_of_reward_components-2].plot(input_list, label=f"Platoon leader", zorder=0) # overlay platoon leaders transmitted data
         reward_axs[number_of_reward_components-2].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
         reward_axs[number_of_reward_components-2].yaxis.set_label_text(env.exog_lbl)
         reward_axs[number_of_reward_components-2].legend()
