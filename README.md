@@ -10,6 +10,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Note: For simulations to render, you will need
+gym==0.21.0
+pyglet==1.5.23
+
 ***Note that on windows you will perform ```venv/Scripts/Activate``` instead of ```source venv/bin/activate```.
 
 ## Run the program
