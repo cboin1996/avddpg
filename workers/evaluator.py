@@ -22,8 +22,11 @@ def run(conf=None, actors=None,
         debug_enabled=False,
         render=False,
         title_off=False,
-        manual_timestep_override=None):
+        manual_timestep_override=None,
+        eval_plwidth=0.5):
     log.info(f"====__--- Launching Evaluator for Platoon {pl_idx}! ---__====")
+    plot_lwidth = eval_plwidth
+    legend_fontsize = 8
     if conf is None:
         conf_path = os.path.join(root_path, config.Config.param_path)
         log.info(f"Loading configuration instance from {conf_path}")
@@ -62,10 +65,12 @@ def run(conf=None, actors=None,
 
     number_of_reward_components = env.number_of_reward_components
     episodic_reward_counters = np.array([0]*num_models, dtype=np.float32)
+    number_of_sim_plot_components = 5
 
     for typ, input_list in input_opts.items(): # allows for a variety of input responses for simulation.
-        simulation_fig, simulation_axs = plt.subplots(num_rows,num_cols, figsize = (4,12))
+        states_fig, states_axs = plt.subplots(num_rows,num_cols, figsize = (4,12))
         reward_fig, reward_axs = plt.subplots(number_of_reward_components, num_cols, figsize=(4,12))
+        sim_fig, sim_axs = plt.subplots(number_of_sim_plot_components, num_cols, figsize = (4,12))
 
         states = env.reset()
         # generate the simulated data for plotting
@@ -91,44 +96,64 @@ def run(conf=None, actors=None,
         # generate the plots
         for i in range(conf.pl_size): # for each follower's states in the platoon states
             for j in range(env.def_num_states): # state plots
-                simulation_axs[j].plot(pl_states[:,i][:,j], label=f"Vehicle {i+1}")
-                simulation_axs[j].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
-                simulation_axs[j].yaxis.set_label_text(f"{env.state_lbs[j]}")
-                simulation_axs[j].legend()
+                states_axs[j].plot(pl_states[:,i][:,j], label=f"Vehicle {i+1}", linewidth=plot_lwidth)
+                states_axs[j].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
+                states_axs[j].yaxis.set_label_text(f"{env.state_lbs[j]}")
+                states_axs[j].legend(prop={"size":legend_fontsize})
 
                 if j < 2: # first two states are used in the reward eqn
-                    reward_axs[j].plot(pl_states[:,i][:,j], label=f"Vehicle {i+1}")
+                    reward_axs[j].plot(pl_states[:,i][:,j], label=f"Vehicle {i+1}", linewidth=plot_lwidth)
                     reward_axs[j].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
                     reward_axs[j].yaxis.set_label_text(f"{env.state_lbs[j]}")
-                    reward_axs[j].legend()
+                    reward_axs[j].legend(prop={"size":legend_fontsize})
 
-            simulation_axs[num_rows-1].plot(pl_inputs[:, i], label=f"Vehicle {i+1}") # input plots
+                if j in [0,1,2]: # these states exclude acceleration of leader.
+                    sim_axs[j].plot(pl_states[:,i][:,j], label=f"Vehicle {i+1}", linewidth=plot_lwidth)
+                    sim_axs[j].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
+                    sim_axs[j].yaxis.set_label_text(f"{env.state_lbs[j]}")
+                    sim_axs[j].legend(prop={"size":legend_fontsize})
 
-            reward_axs[number_of_reward_components-2].plot(pl_inputs[:, i], label=f"Vehicle {i+1}") # input plot
-            reward_axs[number_of_reward_components-1].plot(pl_jerks[:, i], label=f"Vehicle {i+1}") # jerk plots
+            states_axs[num_rows-1].plot(pl_inputs[:, i], label=f"Vehicle {i+1}") # input plots
+
+            reward_axs[number_of_reward_components-2].plot(pl_inputs[:, i], label=f"Vehicle {i+1}", linewidth=plot_lwidth) # input plot
+            reward_axs[number_of_reward_components-1].plot(pl_jerks[:, i], label=f"Vehicle {i+1}", linewidth=plot_lwidth) # jerk plots
             reward_axs[number_of_reward_components-1].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
             reward_axs[number_of_reward_components-1].yaxis.set_label_text(env.jerk_lb)
-            reward_axs[number_of_reward_components-1].legend()
+            reward_axs[number_of_reward_components-1].legend(prop={"size":legend_fontsize})
 
-        simulation_axs[num_rows-1].plot(input_list, label=f"Platoon leader", zorder=0) # overlay platoon leaders transmitted data
-        simulation_axs[num_rows-1].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
-        simulation_axs[num_rows-1].yaxis.set_label_text(env.exog_lbl)
-        simulation_axs[num_rows-1].legend()
+            sim_axs[number_of_sim_plot_components-2].plot(pl_inputs[:, i], label=f"Vehicle {i+1}", linewidth=plot_lwidth) # input plot
+            sim_axs[number_of_sim_plot_components-1].plot(pl_jerks[:, i], label=f"Vehicle {i+1}", linewidth=plot_lwidth) # jerk plots
+            sim_axs[number_of_sim_plot_components-1].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
+            sim_axs[number_of_sim_plot_components-1].yaxis.set_label_text(env.jerk_lb)
+            sim_axs[number_of_sim_plot_components-1].legend(loc="upper right", prop={"size": legend_fontsize})
+
+        states_axs[num_rows-1].plot(input_list, label=f"Platoon leader", zorder=0) # overlay platoon leaders transmitted data
+        states_axs[num_rows-1].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
+        states_axs[num_rows-1].yaxis.set_label_text(env.exog_lbl)
+        states_axs[num_rows-1].legend(prop={"size":legend_fontsize})
         
         reward_axs[number_of_reward_components-2].plot(input_list, label=f"Platoon leader", zorder=0) # overlay platoon leaders transmitted data
         reward_axs[number_of_reward_components-2].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
         reward_axs[number_of_reward_components-2].yaxis.set_label_text(env.exog_lbl)
-        reward_axs[number_of_reward_components-2].legend()
+        reward_axs[number_of_reward_components-2].legend(prop={"size":legend_fontsize})
+
+        sim_axs[num_rows-2].plot(input_list, label=f"Platoon leader", zorder=0, linewidth=plot_lwidth) # overlay platoon leaders transmitted data
+        sim_axs[num_rows-2].xaxis.set_label_text(f"{conf.sample_rate}s steps (total time of {episode_simulation_timesteps*conf.sample_rate} s)")
+        sim_axs[num_rows-2].yaxis.set_label_text(env.exog_lbl)
+        sim_axs[num_rows-2].legend(prop={"size": legend_fontsize}) 
+
         pl_rew = round(np.average(episodic_reward_counters), 3)
 
         sim_plot_title = f"Platoon {pl_idx} {conf.model} {typ} input response\n with cumulative platoon reward of %.3f\n and random seed %s" % (pl_rew, evaluation_seed)
         if manual_timestep_override is not  None:
             fig_tag = "_manual"
-            save_fig(simulation_fig, conf, sim_plot_title, out, "res"+fig_tag, title_off, episodic_reward_counters, model_parent_dir, typ, pl_idx)
+            save_fig(states_fig, conf, sim_plot_title, out, "res"+fig_tag, title_off, episodic_reward_counters, model_parent_dir, typ, pl_idx)
             save_fig(reward_fig, conf, sim_plot_title, out, "rew"+fig_tag, title_off, episodic_reward_counters, model_parent_dir, typ, pl_idx)
+            save_fig(sim_fig, conf, sim_plot_title, out, "sim"+fig_tag, title_off, episodic_reward_counters, model_parent_dir, typ, pl_idx)
         else:
-            save_fig(simulation_fig, conf, sim_plot_title, out, "res", title_off, episodic_reward_counters, model_parent_dir, typ, pl_idx)
+            save_fig(states_fig, conf, sim_plot_title, out, "res", title_off, episodic_reward_counters, model_parent_dir, typ, pl_idx)
             save_fig(reward_fig, conf, sim_plot_title, out, "rew", title_off, episodic_reward_counters, model_parent_dir, typ, pl_idx)
+            save_fig(sim_fig, conf, sim_plot_title, out, "sim", title_off, episodic_reward_counters, model_parent_dir, typ, pl_idx)
     env.close_render()
     return pl_rew
 

@@ -60,16 +60,19 @@ def run(args):
         conf_path = os.path.join(args.exp_path, config.Config.param_path)
         logger.info(f"Loading configuration instance from {conf_path}")
         conf = util.config_loader(conf_path)
+            
         for p in range(conf.num_platoons):
             evaluator.run(conf=conf, root_path=args.exp_path, out='save', seed=True,
                             pl_idx=p+1, debug_enabled=args.sim_debug,
                             render=args.sim_render,
-                            title_off=args.title_off) # already seeded above
+                            title_off=args.title_off,
+                            eval_plwidth=args.eval_plwidth) # already seeded above
             evaluator.run(conf=conf, root_path=args.exp_path, out='save', seed=True,
                             pl_idx=p+1, debug_enabled=args.sim_debug,
                             render=args.sim_render,
                             title_off=args.title_off,
-                            manual_timestep_override=args.n_timesteps) # already seeded above
+                            manual_timestep_override=args.n_timesteps,
+                            eval_plwidth=args.eval_plwidth) # already seeded above
     elif args.mode == "accumr":
         setup_global_logging_stream(conf)
         accumulator.generate_reward_plot(n_vehicles=args.acc_nv, timestamp=timestamp, mode_limit=args.mode_limit)

@@ -26,9 +26,9 @@ class Platoon:
         self.rand_states = rand_states
         self.evaluator_states_enabled = evaluator_states_enabled
 
-        self.state_lbs = {0: "$e_{pi}$", 1 : "$e_{vi}$", 2 : "$a_i$", 3 : "$a_{i-1}$"}
+        self.state_lbs = {0: "$e_{pi,k}$", 1 : "$e_{vi,k}$", 2 : "$a_{i,k}$", 3 : "$a_{i-1,k}$"}
         self.jerk_lb = "jerk"
-        self.exog_lbl = '$u_i$'
+        self.exog_lbl = '$u_{i,k}$'
         self.front_u = util.get_random_val(self.config.rand_gen, self.config.reset_max_u, std_dev=self.config.reset_max_u, config=self.config)
         self.pl_leader_tau = self.config.pl_leader_tau
 
@@ -77,7 +77,6 @@ class Platoon:
                        [255, 0, 0], # red
                        [0,255,0], # green
                        [0,0,255], # blue
-                       [255,255,0], # yellow
                        [255,0,255], # magenta
                        [0,255,255] # cyan
                        ]
@@ -156,7 +155,7 @@ class Platoon:
             self.followers_trans_lst.append(follower_trans)
 
             # add a flag to represent the desired headway
-            flagpole_height = follower.height*1.5 * self.scale
+            flagpole_height = follower.height*2.0 * self.scale
             flagx = 0 * self.scale
             flagy1 = self.floor * self.scale
             flagy2 = flagy1 + flagpole_height

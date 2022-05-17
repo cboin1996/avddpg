@@ -87,6 +87,7 @@ def get_cmdl_args(args: list, description: str, config: config.Config):
     add_esim.add_argument("--title_off", type=bool, default=False, help="Whether to include a title in the plot.")
     add_esim.add_argument("--n_timesteps", type=int, default=100, help=
                           "specify a number of timesteps to plot the simulation for. This setting used in the manual override pass of the evaluator, with a default value of 100.")
+    add_esim.add_argument("--eval_plwidth", type=float, default=0.85, help="Default plot width for evaluator.")
 
     add_accumr = subparsers.add_parser('accumr', help="run in accumulator mode for reward plotting.")
     add_accumr.add_argument("--acc_debug", type=bool, default=False, help="whether to launch the reward accumulator step by step or not.")
