@@ -108,7 +108,6 @@ class Config():
         self.show_env=False
         """Evaluator"""
         self.manual_timestep_override = 100
-
         """Models"""
         self.actor_layer1_size=256
         self.actor_layer2_size=128
