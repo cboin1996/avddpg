@@ -1,4 +1,4 @@
-A Autonomous Vehicle Reinforcement Learning using DDPG Algorithm v1.1.3
+# Autonomous Vehicle Reinforcement Learning using DDPG Algorithm v1.1.4
 A CLI tool for running DRL experiments on a simulated Autonomous vehicle platoon (or many).
 
 ## Install
